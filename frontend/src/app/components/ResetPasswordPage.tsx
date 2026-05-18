@@ -15,6 +15,15 @@ export function ResetPasswordPage({ onBackToLogin, onResetPassword }: ResetPassw
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setError('');
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -22,14 +31,19 @@ export function ResetPasswordPage({ onBackToLogin, onResetPassword }: ResetPassw
         body: JSON.stringify({
           email: localStorage.getItem('reset_email'),
           otp: localStorage.getItem('reset_otp'),
-          new_password: newPassword
-        })
+          new_password: newPassword,
+        }),
       });
+      const data = await response.json();
       if (response.ok) {
+        localStorage.removeItem('reset_email');
+        localStorage.removeItem('reset_otp');
         onResetPassword(newPassword);
+      } else {
+        setError(data.detail || 'Failed to reset password. The OTP may have expired.');
       }
-    } catch (error) {
-      console.error('Reset password error:', error);
+    } catch {
+      setError('Unable to connect to server. Please try again.');
     }
   };
 

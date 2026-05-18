@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Bell, ChevronDown, Settings, LogOut, Search } from 'lucide-react';
+import { ChevronDown, Settings, LogOut, Search } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationPanel } from './NotificationPanel';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -81,23 +82,16 @@ export function Header({
 
     fetchUser();
 
-    const fetchNotifications = async () => {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-      if (!token) return;
-      try {
-        const res = await fetch('/api/notifications/?unread_only=true', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(Array.isArray(data) ? data.length : 0);
-        }
-      } catch {
-        // silently ignore notification errors
-      }
-    };
-
-    fetchNotifications();
+    // Seed initial unread count without opening the panel
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (token) {
+      fetch('/api/notifications/?unread_only=true', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.json() : [])
+        .then(data => setUnreadCount(Array.isArray(data) ? data.length : 0))
+        .catch(() => {});
+    }
   }, []);
 
   // Get initials for avatar
@@ -134,14 +128,7 @@ export function Header({
         </div>
 
         {/* Notifications */}
-        <button className="relative p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-          <Bell size={22} className="text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" strokeWidth={2.5} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] font-bold text-white px-1">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
+        <NotificationPanel unreadCount={unreadCount} onCountChange={setUnreadCount} />
 
         {/* Divider */}
         <div className="w-px h-10 bg-slate-200 dark:bg-slate-700"></div>

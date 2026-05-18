@@ -35,18 +35,11 @@ export function EnterOTPPage({ email, onBackToLogin, onVerifyCode, onResendCode 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join('');
-    try {
-      const response = await fetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: code })
-      });
-      if (response.ok) {
-        onVerifyCode(code);
-      }
-    } catch (error) {
-      console.error('OTP verification error:', error);
-    }
+    if (code.length !== 6) return;
+    // Save for use in ResetPasswordPage — actual verification happens there
+    localStorage.setItem('reset_email', email);
+    localStorage.setItem('reset_otp', code);
+    onVerifyCode(code);
   };
 
   return (

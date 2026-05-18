@@ -21,6 +21,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
     workMode: 'Remote',
     startDate: 'Immediate',
     customStartDate: '',
+    description: '',
   });
 
   const availableSkills = [
