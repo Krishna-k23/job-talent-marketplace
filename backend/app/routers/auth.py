@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models import User, OTP
 from app.schemas import LoginRequest, Token, UserCreate, UserResponse, OTPRequest, OTPVerifyRequest, PasswordResetRequest
 from app.auth import verify_password, get_password_hash, create_access_token, create_refresh_token
-from app.utils.email import generate_otp, send_otp_email
+from app.utils.email_service import generate_otp, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
