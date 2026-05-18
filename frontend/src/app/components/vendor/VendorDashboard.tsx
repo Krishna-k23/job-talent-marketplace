@@ -1,0 +1,174 @@
+import { useState, useEffect } from 'react';
+import { Users, Briefcase, FileCheck, DollarSign, TrendingUp } from 'lucide-react';
+
+export function VendorDashboard() {
+  const [trendFilter, setTrendFilter] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
+  const [stats, setStats] = useState({
+    active_resources: 0,
+    fulfilled_jobs: 0,
+    active_contracts: 0,
+    monthly_revenue: 0
+  });
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [vendorName, setVendorName] = useState('Vendor');
+
+  const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const token = getToken();
+      if (!token) return;
+      
+      try {
+        const response = await fetch('/api/dashboard/vendor/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    const fetchTrends = async () => {
+      const token = getToken();
+      if (!token) return;
+      
+      try {
+        const response = await fetch('/api/analytics/vendor/availability-trend', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const trends = await response.json();
+          setTrendData(trends[trendFilter] || []);
+        }
+      } catch (error) {
+        console.error('Error fetching trends:', error);
+        // Fallback data
+        setTrendData([
+          { label: 'Mon', value: 85 }, { label: 'Tue', value: 70 }, { label: 'Wed', value: 90 },
+          { label: 'Thu', value: 75 }, { label: 'Fri', value: 95 }, { label: 'Sat', value: 60 }, { label: 'Sun', value: 50 }
+        ]);
+      }
+    };
+
+    const fetchUser = async () => {
+      const token = getToken();
+      if (!token) return;
+      
+      try {
+        const response = await fetch('/api/users/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const userData = await response.json();
+          setVendorName(userData.vendor_name || userData.full_name || userData.email?.split('@')[0] || 'Vendor');
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+    fetchTrends();
+    fetchUser();
+  }, [trendFilter]);
+
+  const statsArray = [
+    { label: 'Active Resources', value: stats.active_resources, icon: Users, bgColor: 'bg-purple-50', iconColor: 'text-purple-600' },
+    { label: 'Fulfilled Jobs', value: stats.fulfilled_jobs, icon: FileCheck, bgColor: 'bg-green-50', iconColor: 'text-green-600' },
+    { label: 'Active Contracts', value: stats.active_contracts, icon: Briefcase, bgColor: 'bg-blue-50', iconColor: 'text-blue-600' },
+    { label: 'Monthly Revenue', value: `₹${(stats.monthly_revenue / 1000).toFixed(1)}L`, icon: DollarSign, bgColor: 'bg-orange-50', iconColor: 'text-orange-600' },
+  ];
+
+  const currentData = trendData;
+  const maxValue = Math.max(...currentData.map((d: any) => d.value), 1);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Welcome back, {vendorName}! 👋</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Let's review today's business overview</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statsArray.map((stat, index) => (
+          <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-6 border hover:shadow-lg transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <div className={`w-14 h-14 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
+                <stat.icon size={28} className={stat.iconColor} strokeWidth={2.5} />
+              </div>
+              <div className="flex items-center gap-1 text-green-600 text-sm font-medium"><TrendingUp size={16} /><span>+12%</span></div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-3xl font-bold">{stat.value}</div>
+              <div className="text-sm text-slate-500">{stat.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
+        <div className="flex items-start justify-between mb-6">
+          <div><h2 className="text-xl font-bold">Resource Availability Trend</h2><p className="text-sm text-slate-500 mt-1">{trendFilter.charAt(0).toUpperCase() + trendFilter.slice(1)} resource utilization overview</p></div>
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
+            {(['weekly', 'monthly', 'yearly'] as const).map((filter) => (
+              <button key={filter} onClick={() => setTrendFilter(filter)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${trendFilter === filter ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-200'}`}>
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between gap-3 h-64">
+          {currentData.map((data: any, index: number) => {
+            const heightPercentage = (data.value / maxValue) * 100;
+            return (
+              <div key={index} className="flex-1 flex flex-col justify-end items-center gap-3 h-full">
+                <div className="w-full flex flex-col justify-end h-full">
+                  <div className="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t-lg relative group" style={{ height: `${heightPercentage}%` }}>
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap">{data.value}%</div>
+                  </div>
+                </div>
+                <div className="text-xs font-medium text-center truncate w-full">{data.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
+          <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
+          <div className="space-y-3">
+            <button className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl"><Users size={20} /><span className="font-semibold">Add New Resource</span></button>
+            <button className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-xl"><Briefcase size={20} /><span className="font-semibold">View Active Contracts</span></button>
+            <button className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-xl"><FileCheck size={20} /><span className="font-semibold">Download Reports</span></button>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
+          <h3 className="text-lg font-bold mb-4">Recent Activity</h3>
+          <div className="space-y-4">
+            {stats.active_resources > 0 && <div className="flex items-start gap-3 pb-4 border-b"><div className="w-2 h-2 rounded-full mt-2 bg-green-500"></div><div><div className="text-sm font-medium">Resources Available</div><div className="text-sm text-slate-500">{stats.active_resources} resources ready for deployment</div></div><div className="text-xs text-slate-400 ml-auto">Now</div></div>}
+            {stats.active_contracts > 0 && <div className="flex items-start gap-3 pb-4 border-b"><div className="w-2 h-2 rounded-full mt-2 bg-blue-500"></div><div><div className="text-sm font-medium">Active Contracts</div><div className="text-sm text-slate-500">{stats.active_contracts} contracts in progress</div></div><div className="text-xs text-slate-400 ml-auto">Active</div></div>}
+            {stats.fulfilled_jobs > 0 && <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full mt-2 bg-purple-500"></div><div><div className="text-sm font-medium">Jobs Fulfilled</div><div className="text-sm text-slate-500">{stats.fulfilled_jobs} successful placements</div></div><div className="text-xs text-slate-400 ml-auto">Total</div></div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
