@@ -47,22 +47,27 @@ export default function App() {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('refresh_token', data.refresh_token);
-        localStorage.setItem('user_role', role);
-        
-        setUserRole(role);
-        setIsLoggedIn(true);
-      } else {
-        alert(data.detail || 'Login failed');
+      if (!response.ok) {
+        let errorMsg = 'Login failed';
+        try {
+          const errData = await response.json();
+          errorMsg = errData.detail || errorMsg;
+        } catch {}
+        alert(errorMsg);
+        return;
       }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      localStorage.setItem('user_role', role);
+
+      setUserRole(role);
+      setIsLoggedIn(true);
     } catch (error) {
       console.error('Login error:', error);
-      alert('Unable to connect to server');
+      alert('Cannot reach server. Make sure the backend is running on port 8000.');
     }
   };
 
