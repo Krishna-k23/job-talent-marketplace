@@ -24,8 +24,10 @@ def get_requirements(
         query = query.filter(Requirement.client_id == current_user.id)
     # Vendors can see all requirements for matching
     
-    if status and status != "all":
-        query = query.filter(Requirement.status == status)
+    if status and status.lower() != "all":
+        # DB stores "Open"/"Closed"; frontend sends "open"/"closed" or title-case
+        from sqlalchemy import func as sqlfunc
+        query = query.filter(sqlfunc.lower(Requirement.status) == status.lower())
     
     requirements = query.order_by(Requirement.created_at.desc()).offset(skip).limit(limit).all()
     

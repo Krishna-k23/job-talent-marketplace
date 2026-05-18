@@ -14,6 +14,8 @@ interface LoginPageProps {
 export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Replace the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {

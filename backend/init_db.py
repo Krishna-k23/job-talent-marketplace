@@ -1,47 +1,66 @@
+"""
+Database initialisation script.
+Run once to drop all tables and recreate them with fresh test data.
+
+Usage:
+    cd backend
+    python init_db.py
+"""
+from sqlalchemy import text
 from app.database import SessionLocal, engine, Base
-from app.models import User, Company
+
+# Import every model so SQLAlchemy's metadata is fully populated before
+# drop_all / create_all — missing imports cause silent schema gaps.
+from app.models import (
+    OTP, Company, User, Requirement, Resource, Match,
+    Contract, Invoice, Message, Notification, Subscription,
+    resource_skills,
+)
 from app.auth import get_password_hash
 
-# Drop all tables and recreate them
-Base.metadata.drop_all(bind=engine)
+# Drop all tables in the correct FK order using CASCADE so no
+# foreign-key constraint errors during teardown.
+with engine.connect() as conn:
+    conn.execute(text("DROP SCHEMA public CASCADE"))
+    conn.execute(text("CREATE SCHEMA public"))
+    conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
+    conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+    conn.commit()
+
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
-
 try:
-    # Create test client user with plain text password (temporary for testing)
-    # For production, use proper hashing
     test_client = User(
         email="client@test.com",
-        hashed_password="test123",  # Temporary plain text
+        hashed_password=get_password_hash("test123"),
         full_name="Test Client",
         phone="+91 98765 43219",
         role="client",
         is_active=True,
-        is_verified=True
+        is_verified=True,
     )
     db.add(test_client)
-    
-    # Create test vendor user
+
     test_vendor = User(
         email="vendor@test.com",
-        hashed_password="test123",  # Temporary plain text
+        hashed_password=get_password_hash("test123"),
         full_name="Test Vendor",
         phone="+91 98765 43220",
         role="vendor",
         is_active=True,
         is_verified=True,
-        vendor_name="Test Vendor Solutions"
+        vendor_name="Test Vendor Solutions",
     )
     db.add(test_vendor)
-    
+
     db.commit()
-    
-    print("Database initialized successfully!")
-    print("\nLogin credentials:")
-    print("Client: client@test.com / test123")
-    print("Vendor: vendor@test.com / test123")
-    
+
+    print("Database initialised successfully!")
+    print("\nTest credentials:")
+    print("  Client : client@test.com / test123")
+    print("  Vendor : vendor@test.com / test123")
+
 except Exception as e:
     print(f"Error: {e}")
     db.rollback()

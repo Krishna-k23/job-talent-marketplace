@@ -5,13 +5,20 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from app.config import settings
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # Temporary: compare plain text for testing
+    # Detect bcrypt hashes vs legacy plain-text passwords
+    if hashed_password.startswith(('$2b$', '$2a$', '$2y$')):
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            return False
+    # Plain-text fallback for existing test accounts
     return plain_password == hashed_password
 
 def get_password_hash(password: str) -> str:
-    # Temporary: return plain text
-    return password
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()

@@ -39,7 +39,7 @@ def get_messages(
             message=msg.message,
             is_read=msg.is_read,
             created_at=msg.created_at,
-            sender_name=sender.full_name if sender else sender.email
+            sender_name=(sender.full_name or sender.email) if sender else "Unknown"
         ))
     
     return result
