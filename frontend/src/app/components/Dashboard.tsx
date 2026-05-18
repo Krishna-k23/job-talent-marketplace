@@ -54,7 +54,7 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     if (!token) return;
     
     try {
-      const url = '/api/requirements?limit=10';
+      const url = '/api/requirements/?limit=10';
       
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }

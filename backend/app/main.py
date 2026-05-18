@@ -5,7 +5,7 @@ from app.routers import auth, users, requirements, resources, contracts, billing
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="BenchBridge API", version="1.0.0")
+app = FastAPI(title="BenchBridge API", version="1.0.0", redirect_slashes=False)
 
 # Configure CORS - Allow all for development
 app.add_middleware(

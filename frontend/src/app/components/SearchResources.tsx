@@ -36,7 +36,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
     
     setLoading(true);
     try {
-      let url = '/api/resources?';
+      let url = '/api/resources/?';
       const params: string[] = [];
       
       if (searchKeyword) {

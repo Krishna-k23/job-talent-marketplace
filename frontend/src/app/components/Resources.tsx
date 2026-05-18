@@ -24,7 +24,7 @@ export function Resources() {
       }
 
       try {
-        const response = await fetch('/api/resources', {
+        const response = await fetch('/api/resources/', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',

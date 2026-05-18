@@ -108,46 +108,6 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
 
   const quickActions = isLoggedIn ? userQuickActions : guestQuickActions;
 
-  // Fetch messages from API when logged in
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!isLoggedIn || !token) {
-        console.log('Not logged in, skipping messages fetch');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/messages?limit=50', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Messages fetched:', data);
-          // Convert API messages to chat format
-          const chatMessages = data.map((msg: any, index: number) => ({
-            id: msg.id || index + 2,
-            text: msg.message,
-            sender: msg.sender_id === 1 ? 'bot' : 'user',
-            timestamp: new Date(msg.created_at),
-          }));
-          if (chatMessages.length > 0) {
-            setMessages(prev => [...prev, ...chatMessages]);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch messages:', error);
-      }
-    };
-    
-    if (isLoggedIn) {
-      fetchMessages();
-    }
-  }, [isLoggedIn]);
 
   const handleQuickAction = (action: typeof quickActions[0]) => {
     const userMessage: Message = {
@@ -195,34 +155,6 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
     return responses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
   };
 
-  const sendMessageToAPI = async (messageText: string) => {
-    if (!isLoggedIn) return;
-    
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-      
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          receiver_id: 1,
-          message: messageText,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Message sent:', data);
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
@@ -236,11 +168,6 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
     setMessages([...messages, userMessage]);
     setInputValue('');
     setIsTyping(true);
-
-    // Send to API if logged in
-    if (isLoggedIn) {
-      await sendMessageToAPI(inputValue);
-    }
 
     // Simulate bot response
     setTimeout(() => {

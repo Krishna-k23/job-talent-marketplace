@@ -52,8 +52,8 @@ def get_contracts(
             description=contract.description,
             status=contract.status,
             created_at=contract.created_at,
-            client_name=client.company_name if client and client.company_name else client.email if client else None,
-            vendor_name=vendor.vendor_name if vendor else vendor.email if vendor else None,
+            client_name=(client.full_name or client.email) if client else None,
+            vendor_name=(vendor.vendor_name or vendor.full_name or vendor.email) if vendor else None,
             requirement_role=requirement.role if requirement else None,
             resource_name=resource.name if resource else None
         ))
@@ -122,8 +122,8 @@ def create_contract(
         description=db_contract.description,
         status=db_contract.status,
         created_at=db_contract.created_at,
-        client_name=requirement.client.company_name if requirement.client else None,
-        vendor_name=resource.vendor.vendor_name if resource.vendor else None,
+        client_name=(requirement.client.full_name or requirement.client.email) if requirement.client else None,
+        vendor_name=(resource.vendor.vendor_name or resource.vendor.full_name or resource.vendor.email) if resource.vendor else None,
         requirement_role=requirement.role,
         resource_name=resource.name
     )

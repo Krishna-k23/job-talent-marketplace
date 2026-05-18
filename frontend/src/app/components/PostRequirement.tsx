@@ -47,7 +47,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
 
   const handleSubmit = async () => {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/requirements', {
+    const response = await fetch('/api/requirements/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -68,7 +68,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       const params = new URLSearchParams({ limit: '100' });
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
-      const response = await fetch(`/api/requirements?${params.toString()}`, {
+      const response = await fetch(`/api/requirements/?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

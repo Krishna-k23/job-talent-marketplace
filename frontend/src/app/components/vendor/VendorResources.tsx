@@ -54,7 +54,7 @@ export function VendorResources() {
     }
     
     try {
-      const response = await fetch('/api/resources', {
+      const response = await fetch('/api/resources/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -97,7 +97,7 @@ export function VendorResources() {
     if (!token) return;
     
     try {
-      const response = await fetch('/api/resources', {
+      const response = await fetch('/api/resources/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
