@@ -19,8 +19,11 @@ interface Resource {
   status: 'Available' | 'Busy' | 'On Leave';
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export function VendorResources() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -258,6 +261,17 @@ export function VendorResources() {
     resource.skills?.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const totalPages = Math.max(1, Math.ceil(filteredResources.length / ITEMS_PER_PAGE));
+  const paginatedResources = filteredResources.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -284,7 +298,7 @@ export function VendorResources() {
               type="text"
               placeholder="Search by name, skill, location, or skills..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="w-full h-12 pl-12 pr-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
             />
           </div>
@@ -306,99 +320,123 @@ export function VendorResources() {
         </div>
       </div>
 
-      {/* Resources Table */}
+      {/* Resources — card grid (mobile) + table (md+) */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">S.No</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Resource ID</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Skill Domain</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Experience</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Availability</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Base Rate</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filteredResources.length === 0 ? (
+
+        {/* Empty state */}
+        {filteredResources.length === 0 && (
+          <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+            {searchQuery ? `No resources found matching "${searchQuery}"` : 'No resources found. Add your first resource!'}
+          </div>
+        )}
+
+        {/* Mobile card layout (hidden on md+) */}
+        {paginatedResources.length > 0 && (
+          <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+            {paginatedResources.map((resource, index) => (
+              <div key={resource.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{resource.name}</p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">{resource.resource_id || resource.id}</p>
+                  </div>
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                    resource.status === 'Available' ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' :
+                    resource.status === 'Busy' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400' :
+                    'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+                  }`}>{resource.status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-xs text-slate-600 dark:text-slate-300 mb-3">
+                  <span>{resource.skill_domain}</span>
+                  <span>{resource.experience} exp</span>
+                  <span>{resource.location}</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">₹{resource.base_rate?.toLocaleString()}/mo</span>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => handleViewDetails(resource)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"><Eye size={16} /></button>
+                  <button onClick={() => handleEdit(resource)} className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg transition-colors"><Edit2 size={16} /></button>
+                  <button onClick={() => handleDelete(resource)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Desktop table layout (hidden on mobile) */}
+        {paginatedResources.length > 0 && (
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
-                    {searchQuery ? `No resources found matching "${searchQuery}"` : 'No resources found'}
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">#</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Skill Domain</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Exp</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Availability</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Rate/mo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Actions</th>
                 </tr>
-              ) : (
-                filteredResources.map((resource, index) => (
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {paginatedResources.map((resource, index) => (
                   <tr key={resource.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{index + 1}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">{resource.resource_id || resource.id}</span>
+                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm text-slate-800 dark:text-slate-100">{resource.name}</div>
+                      <div className="text-xs text-purple-600 dark:text-purple-400">{resource.resource_id || resource.id}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-200">{resource.name}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{resource.skill_domain}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{resource.experience}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{resource.availability}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{resource.location}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">₹{resource.base_rate?.toLocaleString()}/mo</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{resource.skill_domain}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{resource.experience}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{resource.availability}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{resource.location}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">₹{resource.base_rate?.toLocaleString()}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         resource.status === 'Available' ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' :
                         resource.status === 'Busy' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400' :
                         'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400'
-                      }`}>
-                        {resource.status}
-                      </span>
+                      }`}>{resource.status}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleViewDetails(resource)}
-                          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye size={18} strokeWidth={2.5} />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(resource)}
-                          className="p-2 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 size={18} strokeWidth={2.5} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(resource)}
-                          className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} strokeWidth={2.5} />
-                        </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => handleViewDetails(resource)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors" title="View"><Eye size={16} strokeWidth={2.5} /></button>
+                        <button onClick={() => handleEdit(resource)} className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg transition-colors" title="Edit"><Edit2 size={16} strokeWidth={2.5} /></button>
+                        <button onClick={() => handleDelete(resource)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg transition-colors" title="Delete"><Trash2 size={16} strokeWidth={2.5} /></button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Pagination - Simplified since we're showing all */}
+        {/* Pagination */}
         {filteredResources.length > 0 && (
-          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="px-4 py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-sm text-slate-600 dark:text-slate-400">
-              Showing {filteredResources.length} of {filteredResources.length} entries
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredResources.length)} of {filteredResources.length}
             </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg opacity-50 cursor-not-allowed" disabled>
-                Previous
-              </button>
-              <button className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold">1</button>
-              <button className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg opacity-50 cursor-not-allowed" disabled>
-                Next
-              </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              >Previous</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 text-sm rounded-lg font-semibold transition-colors ${page === currentPage ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                >{page}</button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              >Next</button>
             </div>
           </div>
         )}

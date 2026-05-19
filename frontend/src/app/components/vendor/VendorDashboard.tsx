@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Users, Briefcase, FileCheck, DollarSign, TrendingUp } from 'lucide-react';
 
-export function VendorDashboard() {
+interface VendorDashboardProps {
+  onNavigate?: (page: 'dashboard' | 'resources' | 'contracts') => void;
+}
+
+export function VendorDashboard({ onNavigate }: VendorDashboardProps) {
   const [trendFilter, setTrendFilter] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [stats, setStats] = useState({
     active_resources: 0,
@@ -154,9 +158,24 @@ export function VendorDashboard() {
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
           <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <button className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl"><Users size={20} /><span className="font-semibold">Add New Resource</span></button>
-            <button className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-xl"><Briefcase size={20} /><span className="font-semibold">View Active Contracts</span></button>
-            <button className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-xl"><FileCheck size={20} /><span className="font-semibold">Download Reports</span></button>
+            <button
+              onClick={() => onNavigate?.('resources')}
+              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all"
+            >
+              <Users size={20} /><span className="font-semibold">Add New Resource</span>
+            </button>
+            <button
+              onClick={() => onNavigate?.('contracts')}
+              className="w-full flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-xl transition-all text-slate-700 dark:text-slate-200"
+            >
+              <Briefcase size={20} /><span className="font-semibold">View Active Contracts</span>
+            </button>
+            <button
+              onClick={() => onNavigate?.('resources')}
+              className="w-full flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-xl transition-all text-slate-700 dark:text-slate-200"
+            >
+              <FileCheck size={20} /><span className="font-semibold">Manage Resources</span>
+            </button>
           </div>
         </div>
 

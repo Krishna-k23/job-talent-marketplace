@@ -184,14 +184,14 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
 
   return (
     <div className="space-y-8">
-      {/* Post Requirement Modal */}
+      {/* Post Requirement Dialog */}
       {showPostRequirement && (
-        <PostRequirement 
+        <PostRequirement
           onClose={() => {
             setShowPostRequirement(false);
             fetchRequirements();
             fetchStats();
-          }} 
+          }}
         />
       )}
 

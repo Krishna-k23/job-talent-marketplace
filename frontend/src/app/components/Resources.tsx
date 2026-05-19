@@ -52,7 +52,7 @@ export function Resources() {
             summary: resource.summary || `Experienced professional with ${resource.experience || '5+'} years of experience.`
           }));
           setResources(formattedResources);
-          
+
           // Update stats
           const savedCount = formattedResources.filter((r: any) => r.saved).length;
           const contactedCount = formattedResources.filter((r: any) => r.status === 'contacted').length;
@@ -100,7 +100,7 @@ export function Resources() {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl transition-all duration-300"
+            className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl transition-all duration-300"
           >
             <div className="text-3xl font-semibold text-foreground mb-1">{stat.value}</div>
             <div className="text-sm text-muted-foreground">{stat.label}</div>
@@ -109,7 +109,7 @@ export function Resources() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-lg border border-border p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Filter size={18} className="text-primary" />
@@ -122,7 +122,7 @@ export function Resources() {
                   className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
                     filterStatus === status
                       ? 'bg-primary text-white shadow-md'
-                      : 'bg-secondary text-muted-foreground hover:bg-blue-50 hover:text-primary'
+                      : 'bg-secondary dark:bg-slate-700 text-muted-foreground hover:bg-blue-50 dark:hover:bg-slate-600 hover:text-primary'
                   }`}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -130,7 +130,7 @@ export function Resources() {
               ))}
             </div>
           </div>
-          <button className="px-4 py-2 text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary transition-all flex items-center gap-2">
+          <button className="px-4 py-2 text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-foreground">
             <Download size={16} />
             Export List
           </button>
@@ -142,7 +142,7 @@ export function Resources() {
         {filteredResources.map((resource) => (
           <div
             key={resource.id}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative"
+            className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative"
           >
             {/* Saved Badge */}
             {resource.saved && (
@@ -160,10 +160,10 @@ export function Resources() {
                   <span className="text-xs font-medium text-primary">{resource.id}</span>
                   <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
                     resource.match >= 90
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
                       : resource.match >= 85
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-yellow-100 text-yellow-700'
+                      ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400'
+                      : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
                   }`}>
                     {resource.match}% Match
                   </span>
@@ -182,7 +182,7 @@ export function Resources() {
                 <Calendar size={16} />
                 <span>{resource.availability}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-green-600 font-semibold">
+              <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-semibold">
                 <span>{resource.rate}</span>
               </div>
             </div>
@@ -191,7 +191,7 @@ export function Resources() {
               {resource.skills.slice(0, 4).map((skill: string, idx: number) => (
                 <span
                   key={idx}
-                  className="px-3 py-1 text-xs font-medium bg-green-50 text-primary rounded-full border border-primary/20"
+                  className="px-3 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/30 text-primary dark:text-blue-400 rounded-full border border-primary/20 dark:border-blue-500/30"
                 >
                   {skill}
                 </span>
@@ -199,8 +199,8 @@ export function Resources() {
             </div>
 
             {resource.status === 'contacted' && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="flex items-center gap-2 text-sm text-blue-700">
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl">
+                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-400">
                   <MessageSquare size={14} />
                   <span className="font-medium">Last contacted: {resource.lastContact}</span>
                 </div>

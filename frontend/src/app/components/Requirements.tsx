@@ -59,7 +59,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const itemsPerPage = 7;
+  const itemsPerPage = 10;
 
   const fetchRequirements = async () => {
     try {

@@ -78,14 +78,19 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl my-4">
+      <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-2 flex items-center gap-2">
-            Post Requirement <span className="text-2xl">🔥</span>
+          <h1 className="text-2xl font-semibold text-foreground dark:text-slate-100 mb-1 flex items-center gap-2">
+            Post Requirement <span className="text-xl">🔥</span>
           </h1>
-          <p className="text-muted-foreground">Define talent need with precision</p>
+          <p className="text-muted-foreground dark:text-slate-400 text-sm">Define talent need with precision</p>
         </div>
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+          <X size={20} className="text-slate-500 dark:text-slate-400" />
+        </button>
       </div>
 
       {/* Step Indicator */}
@@ -118,7 +123,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg border border-border p-8">
+      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-border dark:border-slate-700 p-6 md:p-8">
         {/* Step 1: Basic Info */}
         {step === 1 && (
           <div className="space-y-6">
@@ -207,7 +212,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                         disabled={formData.skills.includes(skill)}
                         className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${formData.skills.includes(skill)
                             ? 'bg-secondary border-border text-muted-foreground cursor-not-allowed'
-                            : 'bg-white border-input hover:border-primary hover:bg-accent text-foreground'
+                            : 'bg-white dark:bg-slate-700 border-input hover:border-primary hover:bg-accent dark:hover:bg-slate-600 text-foreground'
                           }`}
                       >
                         {skill}
@@ -278,7 +283,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                         onClick={() => setFormData({ ...formData, duration: dur })}
                         className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${formData.duration === dur
                             ? 'bg-primary text-white shadow-lg shadow-blue-600/30'
-                            : 'bg-white border-2 border-border text-foreground hover:border-primary hover:bg-blue-50'
+                            : 'bg-white dark:bg-slate-700 border-2 border-border text-foreground hover:border-primary hover:bg-blue-50 dark:hover:bg-slate-600'
                           }`}
                       >
                         {dur}
@@ -296,7 +301,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                         onClick={() => setFormData({ ...formData, workMode: mode })}
                         className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${formData.workMode === mode
                             ? 'bg-primary text-white shadow-lg shadow-blue-600/30'
-                            : 'bg-white border-2 border-border text-foreground hover:border-primary hover:bg-blue-50'
+                            : 'bg-white dark:bg-slate-700 border-2 border-border text-foreground hover:border-primary hover:bg-blue-50 dark:hover:bg-slate-600'
                           }`}
                       >
                         {mode}
@@ -316,7 +321,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                           onClick={() => setFormData({ ...formData, startDate: date })}
                           className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${formData.startDate === date
                               ? 'bg-success text-white shadow-lg shadow-green-500/30'
-                              : 'bg-white border-2 border-border text-foreground hover:border-success hover:bg-green-50'
+                              : 'bg-white dark:bg-slate-700 border-2 border-border text-foreground hover:border-success hover:bg-green-50 dark:hover:bg-slate-600'
                             }`}
                         >
                           {date === 'Immediate' && <CheckCircle2 size={16} className="inline mr-2" />}
@@ -369,6 +374,8 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
             </button>
           )}
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

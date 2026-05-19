@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, Settings, LogOut, Search } from 'lucide-react';
+import { ChevronDown, Settings, LogOut, Search, Menu } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationPanel } from './NotificationPanel';
 
@@ -7,12 +7,14 @@ interface HeaderProps {
   onLogout?: () => void;
   onSettingsClick?: () => void;
   sidebarCollapsed?: boolean;
+  onMobileMenuToggle?: () => void;
 }
 
 export function Header({
   onLogout,
   onSettingsClick,
-  sidebarCollapsed = false
+  sidebarCollapsed = false,
+  onMobileMenuToggle,
 }: HeaderProps) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [user, setUser] = useState({ name: '', email: '' });
@@ -107,7 +109,16 @@ export function Header({
   };
 
   return (
-    <header className={`h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between px-8 fixed top-0 right-0 z-40 transition-all duration-300 shadow-sm ${sidebarCollapsed ? 'left-20' : 'left-64'}`}>
+    <header className={`h-16 md:h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between px-4 md:px-8 fixed top-0 right-0 z-40 transition-all duration-300 shadow-sm left-0 ${sidebarCollapsed ? 'md:left-20' : 'md:left-64'}`}>
+      {/* Mobile hamburger */}
+      <button
+        onClick={onMobileMenuToggle}
+        className="md:hidden p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors mr-2 flex-shrink-0"
+        aria-label="Open menu"
+      >
+        <Menu size={22} className="text-slate-600 dark:text-slate-300" strokeWidth={2.5} />
+      </button>
+
       {/* Left Section - Search */}
       <div className="flex-1 max-w-xl">
         <div className="relative">
@@ -115,7 +126,7 @@ export function Header({
           <input
             type="text"
             placeholder="Search anything..."
-            className="w-full h-12 pl-12 pr-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-400 transition-all"
+            className="w-full h-10 md:h-12 pl-12 pr-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-400 transition-all"
           />
         </div>
       </div>

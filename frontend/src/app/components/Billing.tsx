@@ -85,7 +85,7 @@ export function Billing() {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-white rounded-2xl p-8 shadow-lg border-2 transition-all duration-300 ${plan.highlighted
+              className={`bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border-2 transition-all duration-300 ${plan.highlighted
                 ? 'border-primary shadow-xl shadow-blue-500/20 scale-105'
                 : 'border-border hover:border-primary/50'
                 }`}
@@ -104,7 +104,7 @@ export function Billing() {
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Check size={14} className="text-primary" />
                     </div>
                     <span className="text-sm text-foreground">{feature}</span>
@@ -116,7 +116,7 @@ export function Billing() {
                 onClick={() => handleUpgrade(plan.name)}
                 className={`w-full h-11 font-semibold rounded-xl transition-all duration-200 ${plan.highlighted
                   ? 'bg-primary hover:bg-primary-hover text-white shadow-lg shadow-blue-600/25'
-                  : 'border-2 border-border hover:border-primary text-foreground hover:bg-blue-50'
+                  : 'border-2 border-border hover:border-primary text-foreground hover:bg-blue-50 dark:hover:bg-slate-700'
                   }`}
               >
                 Choose Plan
@@ -127,15 +127,15 @@ export function Billing() {
       </div>
 
       {/* Payment History */}
-      <div className="bg-white rounded-2xl shadow-lg border border-border overflow-hidden">
-        <div className="p-6 border-b border-border bg-gradient-to-r from-blue-50 to-green-50">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-6 border-b border-border bg-gradient-to-r from-blue-50 to-green-50 dark:from-slate-700 dark:to-slate-700">
           <h2 className="text-2xl font-bold text-foreground">Payment History</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border bg-secondary/40">
+              <tr className="border-b border-border bg-secondary/40 dark:bg-slate-700/60">
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Invoice ID
                 </th>
@@ -155,12 +155,12 @@ export function Billing() {
             </thead>
             <tbody className="divide-y divide-border">
               {paymentHistory.map((payment) => (
-                <tr key={payment.id} className="hover:bg-blue-50/50 transition-all duration-150">
+                <tr key={payment.id} className="hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-all duration-150">
                   <td className="px-6 py-4 text-sm font-semibold text-primary">{payment.id}</td>
                   <td className="px-6 py-4 text-sm text-foreground">{payment.date}</td>
                   <td className="px-6 py-4 text-sm font-semibold text-foreground">{payment.amount}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                    <span className="inline-flex px-3 py-1 text-xs font-semibold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full">
                       {payment.status}
                     </span>
                   </td>
