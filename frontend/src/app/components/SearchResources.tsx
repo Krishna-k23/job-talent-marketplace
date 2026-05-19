@@ -234,7 +234,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
     <div className="flex gap-6">
       {/* Filters Panel */}
       <div className="w-72 flex-shrink-0">
-        <div className="bg-white rounded-2xl shadow-lg border border-border p-6 sticky top-24">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border dark:border-slate-700 p-6 sticky top-24">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <SlidersHorizontal size={20} className="text-primary" />
@@ -260,7 +260,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
                     className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
                       selectedSkills.includes(skill)
                         ? 'bg-primary text-white shadow-md'
-                        : 'bg-secondary text-muted-foreground hover:bg-blue-50 hover:text-primary'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-primary'
                     }`}
                   >
                     {skill}
@@ -336,7 +336,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
       <div className="flex-1">
         {/* Filter Banner */}
         {showFilterBanner && preFilteredJobId && (
-          <div className="mb-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-primary/30 rounded-xl p-4 flex items-center justify-between animate-in slide-in-from-top-4 duration-300">
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 border-2 border-primary/30 rounded-xl p-4 flex items-center justify-between animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                 <Eye size={20} className="text-white" />
@@ -370,7 +370,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
               placeholder="Search by name, role, skills, or location... (e.g., DevOps, Bangalore, Python)"
               value={searchKeyword}
               onChange={handleSearch}
-              className="w-full h-12 pl-12 pr-4 bg-white border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+              className="w-full h-12 pl-12 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
         </div>
@@ -381,7 +381,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
           </div>
         ) : currentResources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
               <FileSearch size={40} className="text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-2">No matching profiles found</h3>
@@ -399,14 +399,14 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
               {currentResources.map((resource) => (
                 <div
                   key={resource.id}
-                  className="bg-white rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative"
+                  className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-border dark:border-slate-700 hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative"
                 >
                   {/* Match Badge */}
                   <div className="absolute top-4 right-4">
                     <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                      resource.match >= 90 ? 'bg-green-100 text-green-700' :
-                      resource.match >= 85 ? 'bg-orange-100 text-orange-700' :
-                      'bg-yellow-100 text-yellow-700'
+                      resource.match >= 90 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
+                      resource.match >= 85 ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400' :
+                      'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
                     }`}>
                       {resource.match}% Match
                     </span>
@@ -472,7 +472,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
 
             {/* Pagination */}
             {!preFilteredJobId && totalPages > 1 && (
-              <div className="bg-white rounded-2xl shadow-lg border border-border overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border dark:border-slate-700 overflow-hidden">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}

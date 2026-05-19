@@ -14,19 +14,21 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
 
   const scrollToSection = (sectionId: string) => {
     setIsMobileMenuOpen(false);
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setTimeout(() => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
+    <div className="h-screen bg-background overflow-y-auto overflow-x-hidden" style={{ scrollSnapType: 'y proximity' }}>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 dark:bg-background/90 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer flex-shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-3 cursor-pointer flex-shrink-0" onClick={() => document.querySelector('[style*="scrollSnapType"]')?.scrollTo?.({ top: 0, behavior: 'smooth' })}>
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" />
@@ -88,7 +90,7 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
       </header>
 
       {/* Hero Background Section — fills viewport */}
-      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-green-800 dark:from-slate-950 dark:via-blue-950 dark:to-green-950 relative overflow-hidden min-h-[calc(100vh-4rem)] flex flex-col justify-center">
+      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-green-800 dark:from-slate-950 dark:via-blue-950 dark:to-green-950 relative overflow-hidden min-h-[calc(100vh-4rem)] flex flex-col justify-center" style={{ scrollSnapAlign: 'start' }}>
         {/* Animated Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 via-transparent to-green-600/20"></div>
 
@@ -285,7 +287,7 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
       </div>
 
       {/* Features Section — fills viewport */}
-      <section id="features" className="min-h-screen flex flex-col justify-center py-16 lg:py-20">
+      <section id="features" className="min-h-screen flex flex-col justify-center py-16 lg:py-20" style={{ scrollSnapAlign: 'start' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
           <div className="text-center mb-12 lg:mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium text-primary mb-6">
@@ -365,7 +367,7 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
       </section>
 
       {/* Solutions Section — fills viewport */}
-      <section id="solutions" className="bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 min-h-screen flex flex-col justify-center py-16 lg:py-20">
+      <section id="solutions" className="bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 min-h-screen flex flex-col justify-center py-16 lg:py-20" style={{ scrollSnapAlign: 'start' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
           <div className="text-center mb-12 lg:mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium text-primary mb-6">
@@ -460,7 +462,7 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
       </section>
 
       {/* Pricing Section — fills viewport */}
-      <section id="pricing" className="min-h-screen flex flex-col justify-center py-16 lg:py-20">
+      <section id="pricing" className="min-h-screen flex flex-col justify-center py-16 lg:py-20" style={{ scrollSnapAlign: 'start' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
           <div className="text-center mb-12 lg:mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium text-primary mb-6">

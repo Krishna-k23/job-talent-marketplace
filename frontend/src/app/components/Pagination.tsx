@@ -54,7 +54,7 @@ export function Pagination({
   };
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-border rounded-b-2xl">
+    <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-800 border-t border-border dark:border-slate-700 rounded-b-2xl">
       <div className="text-sm text-muted-foreground">
         Showing <span className="font-medium text-foreground">{startItem}</span> to{' '}
         <span className="font-medium text-foreground">{endItem}</span> of{' '}
@@ -92,7 +92,7 @@ export function Pagination({
                 className={`w-10 h-10 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   currentPage === page
                     ? 'bg-primary text-white shadow-md'
-                    : 'text-foreground hover:bg-blue-50 hover:text-primary'
+                    : 'text-foreground hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-primary'
                 }`}
               >
                 {page}
