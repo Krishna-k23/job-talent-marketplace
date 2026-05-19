@@ -21,15 +21,16 @@ interface ResourceDetailModalProps {
 export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalProps) {
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-card dark:bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+        className="bg-card dark:bg-card rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col animate-in zoom-in-95 duration-200"
+        style={{ maxHeight: 'calc(100vh - 1.5rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-card dark:bg-card border-b border-border p-6 flex items-center justify-between z-10">
+        <div className="flex-shrink-0 bg-card dark:bg-card border-b border-border p-4 sm:p-6 flex items-center justify-between z-10 rounded-t-2xl">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-blue-600/30">
               {resource.name.split(' ').map(n => n[0]).join('')}
@@ -57,7 +58,7 @@ export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalPr
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Role & Experience */}
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-3">{resource.role}</h3>
@@ -95,7 +96,7 @@ export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalPr
           </div>
 
           {/* Availability & Rate */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="bg-secondary/50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Calendar size={16} />
@@ -133,7 +134,7 @@ export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalPr
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-card dark:bg-card border-t border-border p-6 flex items-center gap-3">
+        <div className="flex-shrink-0 bg-card dark:bg-card border-t border-border p-4 sm:p-6 flex items-center gap-3 rounded-b-2xl">
           <button
             onClick={onClose}
             className="flex-1 h-11 px-6 text-sm font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-secondary transition-all"

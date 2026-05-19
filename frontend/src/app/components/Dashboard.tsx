@@ -231,28 +231,29 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
       )}
 
       <div>
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Good morning, {userName} 👋</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Good morning, {userName} 👋</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 text-sm sm:text-base">
           <Activity size={16} /> Here's what's happening with your requirements today
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {summaryStats.map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-6 border hover:shadow-xl transition-all">
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-14 h-14 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
-                <stat.icon size={28} className={stat.iconColor} strokeWidth={2.5} />
+          <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border hover:shadow-xl transition-all">
+            <div className="flex items-start justify-between mb-3 sm:mb-4">
+              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
+                <stat.icon size={20} className={`${stat.iconColor} sm:hidden`} strokeWidth={2.5} />
+                <stat.icon size={28} className={`${stat.iconColor} hidden sm:block`} strokeWidth={2.5} />
               </div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                {stat.trendUp ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+              <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
+                {stat.trendUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                 <span>{stat.trend}</span>
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{stat.value}</div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{stat.label}</div>
             </div>
           </div>
         ))}

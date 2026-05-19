@@ -74,19 +74,19 @@ export function Billing() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Billing & Subscription</h1>
-        <p className="text-muted-foreground">Manage your subscription plan and payment history</p>
+        <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2">Billing & Subscription</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">Manage your subscription plan and payment history</p>
       </div>
 
       {/* Subscription Plans */}
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">Choose Your Plan</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Choose Your Plan</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border-2 transition-all duration-300 ${plan.highlighted
-                ? 'border-primary shadow-xl shadow-blue-500/20 scale-105'
+              className={`bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-8 shadow-lg border-2 transition-all duration-300 ${plan.highlighted
+                ? 'border-primary shadow-xl shadow-blue-500/20 md:scale-105'
                 : 'border-border hover:border-primary/50'
                 }`}
             >
@@ -95,9 +95,9 @@ export function Billing() {
                   Most Popular
                 </div>
               )}
-              <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mb-4 sm:mb-6">
+                <span className="text-3xl sm:text-4xl font-bold text-foreground">{plan.price}</span>
                 <span className="text-muted-foreground">{plan.period}</span>
               </div>
 

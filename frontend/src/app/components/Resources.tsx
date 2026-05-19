@@ -91,35 +91,35 @@ export function Resources() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-semibold text-foreground mb-2">My Resources</h1>
-        <p className="text-muted-foreground">Manage your saved and contacted talent profiles</p>
+        <h1 className="text-2xl sm:text-4xl font-semibold text-foreground mb-2">My Resources</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">Manage your saved and contacted talent profiles</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-3 sm:gap-6">
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-border hover:shadow-xl transition-all duration-300"
+            className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg border border-border hover:shadow-xl transition-all duration-300"
           >
-            <div className="text-3xl font-semibold text-foreground mb-1">{stat.value}</div>
-            <div className="text-sm text-muted-foreground">{stat.label}</div>
+            <div className="text-2xl sm:text-3xl font-semibold text-foreground mb-1">{stat.value}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">{stat.label}</div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Filter size={18} className="text-primary" />
-            <span className="font-medium text-foreground">Filter by:</span>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Filter size={18} className="text-primary flex-shrink-0" />
+            <span className="font-medium text-foreground text-sm sm:text-base">Filter by:</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {(['all', 'saved', 'contacted'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 ${
                     filterStatus === status
                       ? 'bg-primary text-white shadow-md'
                       : 'bg-secondary dark:bg-slate-700 text-muted-foreground hover:bg-blue-50 dark:hover:bg-slate-600 hover:text-primary'
@@ -130,7 +130,7 @@ export function Resources() {
               ))}
             </div>
           </div>
-          <button className="px-4 py-2 text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-foreground">
+          <button className="self-start sm:self-auto px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-foreground flex-shrink-0">
             <Download size={16} />
             Export List
           </button>

@@ -283,40 +283,40 @@ export function VendorResources() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Resources</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Manage all bench resources</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Resources</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm sm:text-base">Manage all bench resources</p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/30 self-start sm:self-auto text-sm sm:text-base"
+        >
+          <Plus size={18} strokeWidth={2.5} />
+          <span>Add Resource</span>
+        </button>
       </div>
 
       {/* Filters & Actions */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-col lg:flex-row gap-4 justify-between">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={2.5} />
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={2.5} />
             <input
               type="text"
-              placeholder="Search by name, skill, location, or skills..."
+              placeholder="Search by name, skill, location..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+              className="w-full h-11 pl-11 pr-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-all">
-              <Download size={20} strokeWidth={2.5} />
-              <span>Download Roster</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/30"
-            >
-              <Plus size={20} strokeWidth={2.5} />
-              <span>Add Resource</span>
-            </button>
-          </div>
+          {/* Download */}
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-all text-sm flex-shrink-0">
+            <Download size={18} strokeWidth={2.5} />
+            <span>Download Roster</span>
+          </button>
         </div>
       </div>
 

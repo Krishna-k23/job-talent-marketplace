@@ -91,15 +91,16 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view' }: 
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-card dark:bg-card rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200"
+        className="bg-card dark:bg-card rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col animate-in zoom-in-95 duration-200"
+        style={{ maxHeight: 'calc(100vh - 1.5rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 px-8 py-6 border-b border-border flex items-start justify-between">
+        <div className="flex-shrink-0 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 px-5 sm:px-8 py-5 sm:py-6 border-b border-border flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-2xl font-semibold text-foreground">{requirement.id}</h2>
@@ -141,7 +142,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view' }: 
         </div>
 
         {/* Content */}
-        <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-8">
           <div className="space-y-6">
             {/* Role */}
             <div>

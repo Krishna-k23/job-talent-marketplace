@@ -140,38 +140,38 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">My Requirements</h1>
-          <p className="text-slate-500 dark:text-slate-400">Manage and track all your job requirements</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-1">My Requirements</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">Manage and track all your job requirements</p>
         </div>
         <button
           onClick={onCreateNew}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-600/30"
+          className="px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-600/30 self-start sm:self-auto flex-shrink-0 text-sm sm:text-base"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Create New
         </button>
       </div>
 
       {/* Search & Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         <div className="flex-1 relative">
-          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search by Job ID or Role..."
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full h-12 pl-12 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-11 sm:h-12 pl-11 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
         </div>
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl p-1 flex-shrink-0">
           {(['all', 'open', 'closed'] as const).map((s) => (
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setCurrentPage(1); }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                 statusFilter === s
                   ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -185,17 +185,17 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
             All Requirements ({filteredRequirements.length})
           </h2>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 flex items-center gap-2">
-              <Download size={16} />
-              Download CSV
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 flex items-center justify-center gap-2">
+              <Download size={15} />
+              <span className="hidden sm:inline">Download</span> CSV
             </button>
-            <button className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-600/30">
-              <Upload size={16} />
+            <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+              <Upload size={15} />
               Bulk Upload
             </button>
           </div>

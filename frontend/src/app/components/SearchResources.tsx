@@ -16,6 +16,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [showFilterBanner, setShowFilterBanner] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -231,9 +232,9 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
     : filteredResources.slice(startIndex, endIndex);
 
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col md:flex-row gap-6">
       {/* Filters Panel */}
-      <div className="w-72 flex-shrink-0">
+      <div className={`w-full md:w-72 md:flex-shrink-0 ${isMobileFilterOpen ? 'block' : 'hidden md:block'}`}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-border dark:border-slate-700 p-6 sticky top-24">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -333,7 +334,19 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
       </div>
 
       {/* Resources Grid */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
+        {/* Mobile filter toggle */}
+        <div className="flex items-center justify-between mb-4 md:hidden">
+          <h1 className="text-2xl font-bold text-foreground">Search Resources</h1>
+          <button
+            onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-border dark:border-slate-700 rounded-lg text-sm font-medium text-foreground shadow-sm"
+          >
+            <SlidersHorizontal size={15} className="text-primary" />
+            Filters
+          </button>
+        </div>
+
         {/* Filter Banner */}
         {showFilterBanner && preFilteredJobId && (
           <div className="mb-6 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 border-2 border-primary/30 rounded-xl p-4 flex items-center justify-between animate-in slide-in-from-top-4 duration-300">
