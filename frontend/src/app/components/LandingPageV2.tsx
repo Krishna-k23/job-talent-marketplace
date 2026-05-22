@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowRight, Users, Briefcase, TrendingUp, Zap, Shield, Bell, BarChart3, Clock, Globe, CheckCircle, Sparkles, Target, Workflow, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowRight, Users, Briefcase, TrendingUp, Zap, Shield, Bell, BarChart3, Clock, Globe, CheckCircle, Sparkles, Target, Workflow, Menu, X, ArrowUp } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { ScrollToTop } from './ScrollToTop';
 import { Chatbot } from './Chatbot';
@@ -11,24 +11,62 @@ interface LandingPageV2Props {
 
 export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2Props) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle scroll to top visibility - attach to the scrollable div
+  useEffect(() => {
+    const handleScroll = () => {
+      if (scrollContainerRef.current) {
+        // Show button when scrolled down 300px
+        setShowScrollTop(scrollContainerRef.current.scrollTop > 300);
+      }
+    };
+
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const scrollToSection = (sectionId: string) => {
     setIsMobileMenuOpen(false);
     setTimeout(() => {
       const element = document.getElementById(sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (element && scrollContainerRef.current) {
+        const containerRect = scrollContainerRef.current.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const scrollPosition = scrollContainerRef.current.scrollTop + elementRect.top - containerRect.top - 80; // 80px offset for header
+        scrollContainerRef.current.scrollTo({
+          top: scrollPosition,
+          behavior: 'smooth'
+        });
       }
     }, 50);
   };
 
   return (
-    <div className="h-screen bg-background overflow-y-auto overflow-x-hidden" style={{ scrollSnapType: 'y proximity' }}>
+    <div
+      ref={scrollContainerRef}
+      className="h-screen bg-background overflow-y-auto overflow-x-hidden"
+      style={{ scrollSnapType: 'y proximity' }}
+    >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 dark:bg-background/90 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer flex-shrink-0" onClick={() => document.querySelector('[style*="scrollSnapType"]')?.scrollTo?.({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-3 cursor-pointer flex-shrink-0" onClick={() => scrollToTop()}>
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" />
@@ -669,9 +707,27 @@ export function LandingPageV2({ onLoginClick, onGetStartedClick }: LandingPageV2
         </div>
       </footer>
 
-      {/* Global Components */}
-      <ScrollToTop />
-      <Chatbot isLoggedIn={false} />
+      {/* Global Components - Adjusted positioning */}
+      {/* Floating Buttons */}
+      <div className="fixed right-3 bottom-3 sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse items-end gap-2">
+
+        {/* Scroll To Top */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="p-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+            aria-label="Scroll to top"
+          >
+            <ArrowUp size={20} />
+          </button>
+        )}
+
+        {/* Chatbot */}
+        <div className="scale-90 sm:scale-100 origin-bottom-right">
+          <Chatbot isLoggedIn={false} />
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -153,6 +153,41 @@ def verify_otp(request: OTPVerifyRequest, db: Session = Depends(get_db)):
     
     return {"message": "OTP verified successfully"}
 
+@router.post("/resend-otp")
+def resend_otp(request: OTPRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Generate new OTP
+    otp_code = generate_otp()
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    
+    # Invalidate old OTPs
+    db.query(OTP).filter(
+        OTP.email == request.email, 
+        OTP.is_used == False,
+        OTP.purpose == "verification"
+    ).update({"is_used": True})
+    
+    # Create new OTP
+    otp = OTP(
+        email=request.email, 
+        otp=otp_code, 
+        purpose="verification", 
+        expires_at=expires_at
+    )
+    db.add(otp)
+    db.commit()
+    
+    # Send OTP via email
+    send_otp_email(request.email, otp_code, "verification")
+    
+    return {"message": "OTP resent successfully"}
+
 @router.post("/reset-password")
 def reset_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
     # Verify OTP

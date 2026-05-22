@@ -35,16 +35,63 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
     setError('');
   };
 
+  const handlePhoneChange = (value: string) => {
+    // Remove any non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Ensure only 10 digits max
+    if (digits.length <= 10) {
+      // Format with +91 prefix when displaying
+      let formattedNumber = digits;
+      if (digits.length > 0) {
+        formattedNumber = digits;
+      }
+      handleInputChange('phoneNumber', formattedNumber);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleInputChange('companyProof', e.target.files[0]);
     }
   };
 
+  // Validate phone number
+  const isPhoneValid = (phone: string) => {
+    return phone.length === 10 && /^\d{10}$/.test(phone);
+  };
+
   // Step 1 → 2: just advance
   // Step 2 → 3: call /signup API (creates user + sends OTP automatically)
   const handleNext = async () => {
+    if (currentStep === 1) {
+      // Validate step 1 fields
+      if (!formData.companyName) {
+        setError('Please enter company name');
+        return;
+      }
+      setCurrentStep(2);
+      return;
+    }
+
     if (currentStep === 2) {
+      // Validate step 2 fields
+      if (!formData.name) {
+        setError('Please enter your full name');
+        return;
+      }
+      if (!formData.email) {
+        setError('Please enter your email address');
+        return;
+      }
+      if (!formData.phoneNumber) {
+        setError('Please enter your phone number');
+        return;
+      }
+      if (!isPhoneValid(formData.phoneNumber)) {
+        setError('Please enter a valid 10-digit phone number');
+        return;
+      }
       if (!formData.password || formData.password.length < 8) {
         setError('Password must be at least 8 characters.');
         return;
@@ -64,12 +111,13 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
             email: formData.email,
             password: formData.password,
             full_name: formData.name,
-            phone: formData.phoneNumber,
+            phone: `+91${formData.phoneNumber}`, // Add +91 prefix
             role: formData.role,
             company_name: formData.companyName,
             website: formData.websiteUrl,
             industry: formData.industry,
             company_size: formData.companySize,
+            designation: formData.designation,
             vendor_name: formData.role === 'vendor' ? formData.companyName : undefined,
           }),
         });
@@ -87,8 +135,6 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
       }
       return;
     }
-
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
   };
 
   const handleBack = () => {
@@ -132,11 +178,20 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
   const handleResendOtp = async () => {
     setError('');
     try {
-      await fetch('/api/auth/send-otp', {
+      const response = await fetch('/api/auth/resend-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email }),
       });
+      
+      if (response.ok) {
+        setError(''); // Clear any previous error
+        // Show success message (you can add a toast notification here)
+        alert('OTP resent successfully! Please check your email.');
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Could not resend OTP. Please try again.');
+      }
     } catch {
       setError('Could not resend OTP. Please try again.');
     }
@@ -278,6 +333,8 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
                     </div>
                   </div>
 
+                  {error && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">{error}</p>}
+
                   <button type="button" onClick={handleNext}
                     className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25">
                     Continue <ArrowRight size={18} />
@@ -314,11 +371,21 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
                     <div>
                       <label className="block text-sm font-semibold text-card-foreground mb-2">Phone Number <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input type="tel" value={formData.phoneNumber} onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                          placeholder="+91 XXXXX XXXXX" required
-                          className="w-full h-11 pl-11 pr-4 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-muted-foreground">
+                          <Phone size={18} />
+                          <span className="text-sm font-medium">+91</span>
+                        </div>
+                        <input 
+                          type="tel" 
+                          value={formData.phoneNumber} 
+                          onChange={(e) => handlePhoneChange(e.target.value)}
+                          placeholder="9876543210" 
+                          required
+                          maxLength={10}
+                          className="w-full h-11 pl-20 pr-4 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" 
+                        />
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">Enter 10-digit mobile number</p>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-card-foreground mb-2">Designation</label>
@@ -377,7 +444,7 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
                     <p className="text-sm text-blue-900 dark:text-blue-200 font-medium">OTP sent to:</p>
                     <p className="text-sm text-blue-700 dark:text-blue-300 font-semibold">{formData.email}</p>
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Check your inbox. If no email arrives, check the backend terminal — the OTP is printed to console when SMTP is not configured.
+                      Check your inbox for the 6-digit verification code.
                     </p>
                   </div>
 

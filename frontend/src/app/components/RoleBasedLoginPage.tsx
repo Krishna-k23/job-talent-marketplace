@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import { Users, Briefcase, ArrowRight, Mail, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -21,6 +21,231 @@ const clientLoginFeatures = [
   'Track your placements',
 ];
 
+// Separate the form into its own memoized component to prevent parent re-renders
+const LoginForm = memo(({ 
+  role, 
+  email, 
+  password, 
+  onEmailChange, 
+  onPasswordChange, 
+  onSubmit, 
+  onForgotPassword, 
+  onSignup, 
+  onBack,
+  error,
+  loading
+}: { 
+  role: 'client' | 'vendor';
+  email: string;
+  password: string;
+  onEmailChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPasswordChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onForgotPassword: () => void;
+  onSignup: () => void;
+  onBack: () => void;
+  error: string;
+  loading: boolean;
+}) => {
+  const isClient = role === 'client';
+  const accentIconBg = isClient ? '#3b82f6' : '#22c55e';
+  const accentBtn = isClient ? '#2563eb' : '#16a34a';
+  const accentHover = isClient ? '#1d4ed8' : '#15803d';
+  const accentFocus = isClient ? '#2563eb' : '#16a34a';
+  const accentShadow = isClient
+    ? '0 4px 14px rgba(37,99,235,0.3)'
+    : '0 4px 14px rgba(22,163,74,0.3)';
+
+  // Mobile touch event handling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <div className="w-full max-w-[420px] flex flex-col gap-3">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-[12.5px] font-medium w-fit transition-opacity hover:opacity-70 touch-manipulation"
+        style={{ color: 'rgba(255,255,255,0.85)' }}
+      >
+        <ArrowLeft size={15} />
+        Back to role selection
+      </button>
+
+      <div
+        className="bg-white rounded-2xl overflow-hidden"
+        style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+      >
+        <div className="px-4 sm:px-6 pt-6 pb-5">
+          <div className="flex flex-col items-center mb-5">
+            <div
+              className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: accentIconBg }}
+            >
+              {isClient ? <Briefcase size={26} color="white" /> : <Users size={26} color="white" />}
+            </div>
+            <h2
+              className="text-[18px] font-bold mb-0.5 text-center"
+              style={{ color: '#1e293b', letterSpacing: '-0.3px' }}
+            >
+              {isClient ? 'Client Login' : 'Vendor Login'}
+            </h2>
+            <p className="text-[12.5px] text-center" style={{ color: '#64748b' }}>
+              Sign in to your {role} account
+            </p>
+          </div>
+
+          {error && (
+            <div
+              className="mb-4 px-3 py-2.5 rounded-xl text-[12px] font-medium"
+              style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}
+            >
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
+            <div onTouchStart={handleTouchStart}>
+              <label className="block text-[11.5px] font-semibold mb-1" style={{ color: '#475569' }}>
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#94a3b8' }} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={onEmailChange}
+                  placeholder="you@company.com"
+                  required
+                  enterKeyHint="next"
+                  className="w-full h-10 pl-9 pr-3 rounded-xl text-[13px] outline-none transition-all mobile:text-[16px]"
+                  style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    color: '#1e293b',
+                    fontSize: '16px',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.border = `1.5px solid ${accentFocus}`;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${accentFocus}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.border = '1.5px solid #e2e8f0';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            </div>
+
+            <div onTouchStart={handleTouchStart}>
+              <label className="block text-[11.5px] font-semibold mb-1" style={{ color: '#475569' }}>
+                Password
+              </label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#94a3b8' }} />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={onPasswordChange}
+                  placeholder="Enter your password"
+                  required
+                  enterKeyHint="done"
+                  className="w-full h-10 pl-9 pr-3 rounded-xl text-[13px] outline-none transition-all mobile:text-[16px]"
+                  style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    color: '#1e293b',
+                    fontSize: '16px',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.border = `1.5px solid ${accentFocus}`;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${accentFocus}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.border = '1.5px solid #e2e8f0';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer touch-manipulation">
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 rounded"
+                  style={{ accentColor: accentBtn } as React.CSSProperties}
+                />
+                <span className="text-[12px] font-medium" style={{ color: '#64748b' }}>
+                  Remember me
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-[12px] font-semibold transition-opacity hover:opacity-70 touch-manipulation"
+                style={{ color: accentBtn }}
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl border-none text-white text-[13.5px] font-bold flex items-center justify-center gap-2 transition-all duration-150 touch-manipulation"
+              style={{
+                background: accentBtn,
+                boxShadow: accentShadow,
+                opacity: loading ? 0.75 : 1,
+                letterSpacing: '0.1px',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.background = accentHover;
+                  el.style.transform = 'scale(1.015)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.background = accentBtn;
+                el.style.transform = 'scale(1)';
+              }}
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>Login as {isClient ? 'Client' : 'Vendor'} <ArrowRight size={16} /></>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <div
+          className="px-6 py-3 text-center text-[12px] font-medium"
+          style={{
+            background: '#f8fafc',
+            borderTop: '1px solid #f1f5f9',
+            color: '#94a3b8',
+          }}
+        >
+          Don't have an account?{' '}
+          <button
+            onClick={onSignup}
+            className="font-bold transition-opacity hover:opacity-70 touch-manipulation"
+            style={{ color: accentBtn }}
+          >
+            Sign up
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+LoginForm.displayName = 'LoginForm';
+
 export function RoleBasedLoginPage({
   onLogin,
   onForgotPassword,
@@ -32,44 +257,76 @@ export function RoleBasedLoginPage({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const isMobileRef = useRef(false);
 
-  const handleRoleSelect = (role: 'client' | 'vendor') => {
+  useEffect(() => {
+    const checkMobile = () => {
+      isMobileRef.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+    checkMobile();
+    
+    // Prevent body from scrolling on desktop
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
+  const handleRoleSelect = useCallback((role: 'client' | 'vendor') => {
     setSelectedRole(role);
     setError('');
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole) { setError('Please select your role first'); return; }
+    if (!selectedRole) { 
+      setError('Please select your role first'); 
+      return; 
+    }
     setLoading(true);
     setError('');
-    onLogin(email, password, selectedRole);
-  };
+    try {
+      await onLogin(email, password, selectedRole);
+    } catch (err) {
+      setError('Login failed. Please try again.');
+      setLoading(false);
+    }
+  }, [selectedRole, email, password, onLogin]);
 
-  const handleBackToRoleSelect = () => {
+  const handleBackToRoleSelect = useCallback(() => {
     setSelectedRole(null);
     setEmail('');
     setPassword('');
     setError('');
-  };
+  }, []);
 
-  /* ─────────────────────────────────────────────────────────
-     Shared wrapper — light: blue gradient | dark: dark slate
-  ───────────────────────────────────────────────────────── */
-  const PageShell = ({ children }: { children: React.ReactNode }) => (
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }, []);
+
+  const PageShell = useCallback(({ children }: { children: React.ReactNode }) => (
     <div
-      className="
-        relative flex flex-col
-        bg-[linear-gradient(135deg,#1a4fa3_0%,#1e62c4_45%,#1a8fd1_100%)]
-        dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_50%,#0f172a_100%)]
-      "
+      className="relative flex flex-col items-center justify-center"
       style={{
         height: '100vh',
+        width: '100vw',
+        maxWidth: '100%',
         overflow: 'hidden',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
+        background: 'linear-gradient(135deg, #1a4fa3 0%, #1e62c4 45%, #1a8fd1 100%)',
       }}
     >
-      {/* Decorative radial overlays */}
+      {/* Dark mode background */}
+      <div className="absolute inset-0 dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_50%,#0f172a_100%)] -z-10" />
+      
+      {/* Decorative elements */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -77,7 +334,6 @@ export function RoleBasedLoginPage({
             'radial-gradient(ellipse at 15% 50%, rgba(255,255,255,0.07) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(255,255,255,0.05) 0%, transparent 50%)',
         }}
       />
-      {/* Frosted glass square — top-right */}
       <div
         className="pointer-events-none absolute"
         style={{
@@ -92,7 +348,6 @@ export function RoleBasedLoginPage({
           transform: 'rotate(15deg)',
         }}
       />
-      {/* Smaller square — bottom-left */}
       <div
         className="pointer-events-none absolute"
         style={{
@@ -107,18 +362,19 @@ export function RoleBasedLoginPage({
           transform: 'rotate(-12deg)',
         }}
       />
-      {/* Floating theme toggle */}
-      <div className="absolute top-4 right-4 z-30">
+      
+      {/* Header */}
+      <div className="absolute top-0 right-0 z-30 p-4">
         <ThemeToggle />
       </div>
+      
       {children}
     </div>
-  );
+  ), []);
 
-  /* Shared logo pill */
-  const LogoPill = () => (
+  const LogoPill = useCallback(() => (
     <div
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl"
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl mb-6"
       style={{
         background: 'rgba(255,255,255,0.15)',
         border: '1px solid rgba(255,255,255,0.25)',
@@ -131,18 +387,14 @@ export function RoleBasedLoginPage({
       </svg>
       <span className="text-white font-bold text-[14px] tracking-tight">BenchBridge</span>
     </div>
-  );
+  ), []);
 
-  /* ─────────────────────────────────────────────────────────
-     SCREEN 1 — Role selection
-  ───────────────────────────────────────────────────────── */
+  // Role selection screen
   if (!selectedRole) {
     return (
       <PageShell>
-        <main className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 sm:px-6 py-6 gap-6">
-
-          {/* Logo + heading */}
-          <div className="flex flex-col items-center gap-3 text-center">
+        <div className="relative z-10 flex flex-col items-center justify-center px-4 sm:px-6 w-full max-w-full">
+          <div className="flex flex-col items-center gap-3 text-center mb-8">
             <LogoPill />
             <h1
               className="text-[1.75rem] sm:text-[2rem] font-extrabold text-white leading-tight"
@@ -155,7 +407,6 @@ export function RoleBasedLoginPage({
             </p>
           </div>
 
-          {/* Role cards — always white */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-[760px]">
             <RoleCard
               iconBg="#22c55e"
@@ -183,222 +434,44 @@ export function RoleBasedLoginPage({
             />
           </div>
 
-          <p className="text-[12px] font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <p className="text-[12px] font-medium mt-8" style={{ color: 'rgba(255,255,255,0.55)' }}>
             Don't have an account?{' '}
             <button
               onClick={onSignup}
-              className="font-bold underline underline-offset-2 transition-opacity hover:opacity-80"
+              className="font-bold underline underline-offset-2 transition-opacity hover:opacity-80 touch-manipulation"
               style={{ color: 'rgba(255,255,255,0.9)' }}
             >
               Sign up
             </button>
           </p>
-        </main>
+        </div>
       </PageShell>
     );
   }
 
-  /* ─────────────────────────────────────────────────────────
-     SCREEN 2 — Login form
-  ───────────────────────────────────────────────────────── */
-  const isClient = selectedRole === 'client';
-  const accentIconBg = isClient ? '#3b82f6' : '#22c55e';
-  const accentBtn = isClient ? '#2563eb' : '#16a34a';
-  const accentHover = isClient ? '#1d4ed8' : '#15803d';
-  const accentFocus = isClient ? '#2563eb' : '#16a34a';
-  const accentShadow = isClient
-    ? '0 4px 14px rgba(37,99,235,0.3)'
-    : '0 4px 14px rgba(22,163,74,0.3)';
-
+  // Login form screen
   return (
     <PageShell>
-      <main className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 sm:px-6 py-6 gap-5">
-
+      <div className="relative z-10 flex flex-col items-center justify-center px-4 sm:px-6 w-full max-w-full">
         <LogoPill />
-
-        <div className="w-full max-w-[420px] flex flex-col gap-3">
-          {/* Back */}
-          <button
-            onClick={handleBackToRoleSelect}
-            className="flex items-center gap-1.5 text-[12.5px] font-medium w-fit transition-opacity hover:opacity-70"
-            style={{ color: 'rgba(255,255,255,0.85)' }}
-          >
-            <ArrowLeft size={15} />
-            Back to role selection
-          </button>
-
-          {/* Login card — always white */}
-          <div
-            className="bg-white rounded-2xl overflow-hidden"
-            style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
-          >
-            <div className="px-6 pt-6 pb-5">
-
-              {/* Icon + title */}
-              <div className="flex flex-col items-center mb-5">
-                <div
-                  className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center mb-3"
-                  style={{ background: accentIconBg }}
-                >
-                  {isClient ? <Briefcase size={26} color="white" /> : <Users size={26} color="white" />}
-                </div>
-                <h2
-                  className="text-[18px] font-bold mb-0.5 text-center"
-                  style={{ color: '#1e293b', letterSpacing: '-0.3px' }}
-                >
-                  {isClient ? 'Client Login' : 'Vendor Login'}
-                </h2>
-                <p className="text-[12.5px] text-center" style={{ color: '#64748b' }}>
-                  Sign in to your {selectedRole} account
-                </p>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div
-                  className="mb-4 px-3 py-2.5 rounded-xl text-[12px] font-medium"
-                  style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}
-                >
-                  {error}
-                </div>
-              )}
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-
-                {/* Email */}
-                <div>
-                  <label className="block text-[11.5px] font-semibold mb-1" style={{ color: '#475569' }}>
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94a3b8' }} />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@company.com"
-                      required
-                      className="w-full h-10 pl-9 pr-3 rounded-xl text-[13px] outline-none transition-all"
-                      style={{
-                        background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
-                        color: '#1e293b',
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${accentFocus}`; }}
-                      onBlur={(e) => { e.currentTarget.style.border = '1.5px solid #e2e8f0'; }}
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="block text-[11.5px] font-semibold mb-1" style={{ color: '#475569' }}>
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94a3b8' }} />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      required
-                      className="w-full h-10 pl-9 pr-3 rounded-xl text-[13px] outline-none transition-all"
-                      style={{
-                        background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
-                        color: '#1e293b',
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${accentFocus}`; }}
-                      onBlur={(e) => { e.currentTarget.style.border = '1.5px solid #e2e8f0'; }}
-                    />
-                  </div>
-                </div>
-
-                {/* Remember / Forgot */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="w-3.5 h-3.5 rounded"
-                      style={{ accentColor: accentBtn } as React.CSSProperties}
-                    />
-                    <span className="text-[12px] font-medium" style={{ color: '#64748b' }}>
-                      Remember me
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={onForgotPassword}
-                    className="text-[12px] font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: accentBtn }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl border-none text-white text-[13.5px] font-bold flex items-center justify-center gap-2 transition-all duration-150"
-                  style={{
-                    background: accentBtn,
-                    boxShadow: accentShadow,
-                    opacity: loading ? 0.75 : 1,
-                    letterSpacing: '0.1px',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading) {
-                      const el = e.currentTarget as HTMLButtonElement;
-                      el.style.background = accentHover;
-                      el.style.transform = 'scale(1.015)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.background = accentBtn;
-                    el.style.transform = 'scale(1)';
-                  }}
-                >
-                  {loading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>Login as {isClient ? 'Client' : 'Vendor'} <ArrowRight size={16} /></>
-                  )}
-                </button>
-              </form>
-            </div>
-
-            {/* Card footer */}
-            <div
-              className="px-6 py-3 text-center text-[12px] font-medium"
-              style={{
-                background: '#f8fafc',
-                borderTop: '1px solid #f1f5f9',
-                color: '#94a3b8',
-              }}
-            >
-              Don't have an account?{' '}
-              <button
-                onClick={onSignup}
-                className="font-bold transition-opacity hover:opacity-70"
-                style={{ color: accentBtn }}
-              >
-                Sign up
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
+        <LoginForm
+          role={selectedRole}
+          email={email}
+          password={password}
+          onEmailChange={handleEmailChange}
+          onPasswordChange={handlePasswordChange}
+          onSubmit={handleSubmit}
+          onForgotPassword={onForgotPassword}
+          onSignup={onSignup}
+          onBack={handleBackToRoleSelect}
+          error={error}
+          loading={loading}
+        />
+      </div>
     </PageShell>
   );
 }
 
-/* ─────────────────────────────────────────────────────────
-   Sub-component: Role card — always white, never dark
-───────────────────────────────────────────────────────── */
 interface RoleCardProps {
   iconBg: string;
   icon: React.ReactNode;
@@ -435,7 +508,6 @@ function RoleCard({
         el.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)';
       }}
     >
-      {/* Card body */}
       <div className="flex flex-col flex-1 p-5 pb-4">
         <div
           className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-105"
@@ -469,9 +541,8 @@ function RoleCard({
         </ul>
       </div>
 
-      {/* Flush CTA */}
       <button
-        className="w-full py-3.5 flex items-center justify-center gap-2 text-white text-[13.5px] font-bold transition-colors duration-150"
+        className="w-full py-3.5 flex items-center justify-center gap-2 text-white text-[13.5px] font-bold transition-colors duration-150 touch-manipulation"
         style={{ background: btnBg, borderRadius: '0 0 16px 16px', letterSpacing: '0.1px' }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = btnHover; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = btnBg; }}

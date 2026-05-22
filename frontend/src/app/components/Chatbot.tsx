@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, User, Bot, LogIn, UserPlus, HelpCircle, Phone, FileText, Users, Briefcase, DollarSign, Settings, Headphones } from 'lucide-react';
 
 interface Message {
@@ -27,6 +27,15 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
 
   // Quick Actions for NOT logged in users
   const guestQuickActions = [
@@ -107,7 +116,6 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
   ];
 
   const quickActions = isLoggedIn ? userQuickActions : guestQuickActions;
-
 
   const handleQuickAction = (action: typeof quickActions[0]) => {
     const userMessage: Message = {
@@ -207,123 +215,137 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
         </button>
       )}
 
-      {/* Chat Window */}
+      {/* Chat Window - Responsive Design */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 flex flex-col animate-in zoom-in-95 fade-in duration-300">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-t-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">Chat Assistant</h3>
-                <p className="text-xs text-blue-100">How can I help you?</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X size={20} className="text-white" />
-            </button>
-          </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-900">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 ${
-                  message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    message.sender === 'bot'
-                      ? 'bg-gradient-to-br from-blue-600 to-cyan-600'
-                      : 'bg-gradient-to-br from-purple-600 to-pink-600'
-                  }`}
-                >
-                  {message.sender === 'bot' ? (
-                    <Bot size={18} className="text-white" />
-                  ) : (
-                    <User size={18} className="text-white" />
-                  )}
+        <div className="fixed bottom-6 right-6 z-50 animate-in zoom-in-95 fade-in duration-300">
+          <div 
+            ref={chatContainerRef}
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+            style={{
+              width: 'min(90vw, 400px)',
+              height: 'min(80vh, 600px)',
+              maxWidth: '400px',
+              minWidth: '280px',
+              maxHeight: '600px',
+              minHeight: '450px',
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-600 to-cyan-600 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Bot size={24} className="text-white" />
                 </div>
+                <div>
+                  <h3 className="font-bold text-white">Chat Assistant</h3>
+                  <p className="text-xs text-blue-100">How can I help you?</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-white" />
+              </button>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-900">
+              {messages.map((message) => (
                 <div
-                  className={`max-w-[75%] px-4 py-3 rounded-2xl ${
-                    message.sender === 'bot'
-                      ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
-                      : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                  key={message.id}
+                  className={`flex items-start gap-3 ${
+                    message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed">{message.text}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      message.sender === 'bot' ? 'text-slate-400' : 'text-blue-100'
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      message.sender === 'bot'
+                        ? 'bg-gradient-to-br from-blue-600 to-cyan-600'
+                        : 'bg-gradient-to-br from-purple-600 to-pink-600'
                     }`}
                   >
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {/* Typing Indicator */}
-            {isTyping && (
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-600 to-cyan-600">
-                  <Bot size={18} className="text-white" />
-                </div>
-                <div className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    {message.sender === 'bot' ? (
+                      <Bot size={18} className="text-white" />
+                    ) : (
+                      <User size={18} className="text-white" />
+                    )}
+                  </div>
+                  <div
+                    className={`max-w-[75%] px-4 py-3 rounded-2xl ${
+                      message.sender === 'bot'
+                        ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
+                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed break-words">{message.text}</p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        message.sender === 'bot' ? 'text-slate-400' : 'text-blue-100'
+                      }`}
+                    >
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
 
-            {/* Quick Actions */}
-            {showQuickActions && (
-              <div className={`grid ${isLoggedIn ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-4`}>
-                {quickActions.map((action) => (
-                  <button
-                    key={action.id}
-                    onClick={() => handleQuickAction(action)}
-                    className={`p-4 bg-gradient-to-br ${action.color} text-white rounded-xl hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl`}
-                  >
-                    <action.icon size={isLoggedIn ? 20 : 24} className="mx-auto mb-2" />
-                    <p className={`${isLoggedIn ? 'text-xs' : 'text-sm'} font-semibold`}>{action.label}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {/* Typing Indicator */}
+              {isTyping && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-600 to-cyan-600">
+                    <Bot size={18} className="text-white" />
+                  </div>
+                  <div className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {/* Input Area */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-b-2xl">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
-                className="w-11 h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed"
-              >
-                <Send size={18} />
-              </button>
+              {/* Quick Actions */}
+              {showQuickActions && (
+                <div className={`grid ${isLoggedIn ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-4`}>
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.id}
+                      onClick={() => handleQuickAction(action)}
+                      className={`p-4 bg-gradient-to-br ${action.color} text-white rounded-xl hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95`}
+                    >
+                      <action.icon size={isLoggedIn ? 20 : 24} className="mx-auto mb-2" />
+                      <p className={`${isLoggedIn ? 'text-xs' : 'text-sm'} font-semibold`}>{action.label}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim()}
+                  className="w-11 h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed active:scale-95"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
