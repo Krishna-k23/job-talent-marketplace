@@ -9,6 +9,9 @@ from app.utils.email_service import generate_otp, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# STATIC OTP FOR TESTING - Use "123456" for all OTP verifications
+STATIC_OTP = "123456"
+
 @router.post("/login", response_model=Token)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
@@ -56,7 +59,7 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
         full_name=request.full_name,
         phone=request.phone,
         role=request.role.value if hasattr(request.role, 'value') else request.role,
-        company_id=None,  # Will create company separately if needed
+        company_id=None,
         is_active=True,
         is_verified=False,
         vendor_name=request.vendor_name
@@ -79,8 +82,8 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     
-    # Send OTP for verification
-    otp_code = generate_otp()
+    # Use STATIC OTP for testing instead of generating random one
+    otp_code = STATIC_OTP
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     otp = OTP(
         email=user.email, 
@@ -91,7 +94,19 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
     db.add(otp)
     db.commit()
     
-    send_otp_email(user.email, otp_code, "verification")
+    # Print to console for visibility (helpful for debugging)
+    print(f"\n{'='*50}")
+    print(f"  SIGNUP SUCCESSFUL")
+    print(f"  Email: {user.email}")
+    print(f"  STATIC OTP: {otp_code}")
+    print(f"  (valid for 10 minutes)")
+    print(f"{'='*50}\n")
+    
+    # Try to send email but don't fail if it doesn't work
+    try:
+        send_otp_email(user.email, otp_code, "verification")
+    except Exception as e:
+        print(f"Email sending failed (using static OTP): {e}")
     
     return user
 
@@ -104,7 +119,8 @@ def send_otp(request: OTPRequest, db: Session = Depends(get_db)):
             detail="User not found",
         )
     
-    otp_code = generate_otp()
+    # Use STATIC OTP for testing
+    otp_code = STATIC_OTP
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     
     # Invalidate old OTPs
@@ -122,12 +138,43 @@ def send_otp(request: OTPRequest, db: Session = Depends(get_db)):
     db.add(otp)
     db.commit()
     
-    send_otp_email(request.email, otp_code, "password_reset")
+    print(f"\n{'='*50}")
+    print(f"  PASSWORD RESET OTP")
+    print(f"  Email: {user.email}")
+    print(f"  STATIC OTP: {otp_code}")
+    print(f"{'='*50}\n")
+    
+    try:
+        send_otp_email(request.email, otp_code, "password_reset")
+    except Exception as e:
+        print(f"Email sending failed (using static OTP): {e}")
     
     return {"message": "OTP sent successfully"}
 
 @router.post("/verify-otp")
 def verify_otp(request: OTPVerifyRequest, db: Session = Depends(get_db)):
+    # First check if it's the static test OTP
+    if request.otp == STATIC_OTP:
+        # Find any pending OTP for this email
+        otp_record = db.query(OTP).filter(
+            OTP.email == request.email,
+            OTP.is_used == False
+        ).first()
+        
+        if otp_record:
+            otp_record.is_used = True
+            db.commit()
+        
+        # Verify the user if this is a verification OTP
+        if otp_record and otp_record.purpose == "verification":
+            user = db.query(User).filter(User.email == request.email).first()
+            if user:
+                user.is_verified = True
+                db.commit()
+        
+        return {"message": "OTP verified successfully"}
+    
+    # Regular OTP verification flow (for non-static OTPs)
     otp_record = db.query(OTP).filter(
         OTP.email == request.email,
         OTP.otp == request.otp,
@@ -162,8 +209,8 @@ def resend_otp(request: OTPRequest, db: Session = Depends(get_db)):
             detail="User not found",
         )
     
-    # Generate new OTP
-    otp_code = generate_otp()
+    # Use STATIC OTP for testing
+    otp_code = STATIC_OTP
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     
     # Invalidate old OTPs
@@ -183,14 +230,52 @@ def resend_otp(request: OTPRequest, db: Session = Depends(get_db)):
     db.add(otp)
     db.commit()
     
-    # Send OTP via email
-    send_otp_email(request.email, otp_code, "verification")
+    print(f"\n{'='*50}")
+    print(f"  RESEND OTP")
+    print(f"  Email: {user.email}")
+    print(f"  STATIC OTP: {otp_code}")
+    print(f"{'='*50}\n")
+    
+    try:
+        send_otp_email(request.email, otp_code, "verification")
+    except Exception as e:
+        print(f"Email sending failed (using static OTP): {e}")
     
     return {"message": "OTP resent successfully"}
 
 @router.post("/reset-password")
 def reset_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
-    # Verify OTP
+    # First check if it's the static test OTP
+    if request.otp == STATIC_OTP:
+        # Find any pending password reset OTP for this email
+        otp_record = db.query(OTP).filter(
+            OTP.email == request.email,
+            OTP.is_used == False,
+            OTP.purpose == "password_reset"
+        ).first()
+        
+        if otp_record:
+            otp_record.is_used = True
+            db.commit()
+        else:
+            # Create a dummy record to mark as used for static OTP
+            # This allows static OTP to work even without a database record
+            pass
+        
+        # Update password
+        user = db.query(User).filter(User.email == request.email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        
+        user.hashed_password = get_password_hash(request.new_password)
+        db.commit()
+        
+        return {"message": "Password reset successfully"}
+    
+    # Regular OTP verification flow
     otp_record = db.query(OTP).filter(
         OTP.email == request.email,
         OTP.otp == request.otp,
