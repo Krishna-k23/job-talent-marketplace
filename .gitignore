@@ -21,8 +21,8 @@ backend/env/
 # =========================
 # Environment variables
 # =========================
-backend/.env
-frontend/.env
+# backend/.env
+# frontend/.env
 
 # =========================
 # IDE / OS files
