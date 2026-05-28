@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from app.database import get_db
-from app.models import User, Resource, Match, Requirement
+from app.models import Contract, User, Resource, Match, Requirement
 from app.schemas import ResourceCreate, ResourceUpdate, ResourceResponse
 from app.dependencies import get_current_user, get_current_vendor
 from app.utils.helpers import generate_resource_id
@@ -120,22 +120,35 @@ def update_resource(
 @router.delete("/{resource_id}")
 def delete_resource(
     resource_id: int,
-    current_user: User = Depends(get_current_vendor),  # Only vendors can delete
+    current_user: User = Depends(get_current_vendor),
     db: Session = Depends(get_db)
 ):
-    db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
-    if not db_resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
+    try:
+        # First find the resource
+        db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
+        if not db_resource:
+            raise HTTPException(status_code=404, detail="Resource not found")
+        
+        # Check ownership
+        if db_resource.vendor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
+        
+        # Delete related matches first (foreign key constraint)
+        db.query(Match).filter(Match.resource_id == resource_id).delete()
+        
+        # Delete any contracts associated with this resource
+        db.query(Contract).filter(Contract.resource_id == resource_id).delete()
+        
+        # Delete the resource
+        db.delete(db_resource)
+        db.commit()
+        
+        return {"message": "Resource deleted successfully", "success": True}
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting resource: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting resource: {str(e)}")
     
-    if db_resource.vendor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
-    
-    db.query(Match).filter(Match.resource_id == resource_id).delete()
-    db.delete(db_resource)
-    db.commit()
-    
-    return {"message": "Resource deleted successfully"}
-
 def match_with_requirements(resource: Resource, db: Session):
     from app.routers.requirements import calculate_match_score
     

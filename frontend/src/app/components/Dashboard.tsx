@@ -1,12 +1,15 @@
+// Dashboard.tsx - Updated with toast notifications
 import { useState, useEffect } from 'react';
 import { Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, MapPin, Briefcase, Target, Plus, Upload, ArrowRight, Activity, X, Download } from 'lucide-react';
 import { PostRequirement } from './PostRequirement';
+import { useToast } from '../contexts/ToastContext';
 
 interface DashboardProps {
   onViewMatches?: (jobId: string, matchCount: number) => void;
 }
 
 export function Dashboard({ onViewMatches }: DashboardProps) {
+  const { showSuccess, showError } = useToast();  // ADD THIS LINE
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [stats, setStats] = useState({
     totalRequirements: 0,
@@ -108,10 +111,10 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     setShowPostRequirement(true);
   };
 
-  // Handle Bulk Upload
+  // Handle Bulk Upload - UPDATED with toast
   const handleBulkUpload = async () => {
     if (!bulkFile) {
-      alert('Please select a CSV file');
+      showError('Please select a CSV file');  // REPLACED alert
       return;
     }
     
@@ -129,17 +132,19 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
       });
       
       if (response.ok) {
-        alert('Requirements uploaded successfully!');
+        const result = await response.json();
+        showSuccess(`Successfully uploaded ${result.count || result.length || 0} requirements`);  // REPLACED alert
         setShowBulkUpload(false);
         setBulkFile(null);
         fetchRequirements();
         fetchStats();
       } else {
-        alert('Upload failed. Please check the file format.');
+        const error = await response.json();
+        showError(error.detail || 'Upload failed. Please check the file format.');  // REPLACED alert
       }
     } catch (error) {
       console.error('Bulk upload error:', error);
-      alert('Upload failed');
+      showError('Upload failed. Please try again.');  // REPLACED alert
     } finally {
       setBulkUploading(false);
     }
@@ -158,6 +163,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
     a.download = 'requirements_template.csv';
     a.click();
     window.URL.revokeObjectURL(url);
+    showSuccess('Template downloaded successfully!');  // OPTIONAL: Add success toast
   };
 
   const summaryStats = [

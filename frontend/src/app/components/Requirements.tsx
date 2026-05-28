@@ -3,6 +3,7 @@ import { Eye, Edit2, Trash2, Download, Upload, Plus, Search } from 'lucide-react
 import { RequirementDetailModal } from './RequirementDetailModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { Pagination } from './Pagination';
+import { useToast } from '../contexts/ToastContext';
 
 interface RequirementsProps {
   onViewMatches?: (jobId: string, matchCount: number) => void;
@@ -46,6 +47,7 @@ function formatBudget(min?: number, max?: number): string {
 }
 
 export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) {
+  const { showSuccess, showError } = useToast();
   const [selectedRequirement, setSelectedRequirement] = useState<ApiRequirement | null>(null);
   const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; id: number; label: string }>({
@@ -123,6 +125,65 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
     setDeleteConfirmation({ show: false, id: 0, label: '' });
   };
 
+  // BULK UPLOAD FUNCTIONS - ADD THIS HERE
+  const handleBulkUpload = async (file: File) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (!token) {
+      showError('Please login first');  // REPLACE alert
+      return;
+    }
+
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      showError('Please upload an Excel file (.xlsx, .xls) or CSV file');  // REPLACE alert
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/requirements/bulk-upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        showSuccess(`Successfully uploaded ${result.count || result.length || 0} requirements`);  // REPLACE alert
+        fetchRequirements();
+      } else {
+        const error = await response.json();
+        showError(error.detail || 'Failed to upload file');  // REPLACE alert
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      showError('Error uploading file. Please try again.');  // REPLACE alert
+    }
+  };
+
+  const triggerFileUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        handleBulkUpload(file);
+      }
+    };
+    input.click();
+  };
+  // END OF BULK UPLOAD FUNCTIONS
+
   // Client-side search filter on top of server-side status filter
   const filteredRequirements = requirements.filter((req) => {
     if (!searchQuery) return true;
@@ -171,11 +232,10 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setCurrentPage(1); }}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
-                statusFilter === s
+              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${statusFilter === s
                   ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
+                }`}
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
@@ -194,7 +254,11 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
               <Download size={15} />
               <span className="hidden sm:inline">Download</span> CSV
             </button>
-            <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+            {/* UPDATED BULK UPLOAD BUTTON WITH onClick */}
+            <button
+              onClick={triggerFileUpload}
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30"
+            >
               <Upload size={15} />
               Bulk Upload
             </button>
@@ -247,11 +311,10 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                     </td>
                     <td className="px-6 py-5">
                       <span
-                        className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                          req.status === 'Open'
+                        className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full border ${req.status === 'Open'
                             ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
                             : 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
-                        }`}
+                          }`}
                       >
                         {req.status}
                       </span>

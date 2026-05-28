@@ -1,7 +1,10 @@
+// app.tsx (corrected version)
 import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { LandingPageV2 } from './components/LandingPageV2';
-import { RoleBasedLoginPage } from './components/RoleBasedLoginPage';
+import { LoginPage } from './components/LoginPage';
+import { RoleSelectionAfterLogin } from './components/RoleSelectionAfterLogin';
 import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { EnterOTPPage } from './components/EnterOTPPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
@@ -22,6 +25,7 @@ import { VendorResources } from './components/vendor/VendorResources';
 import { VendorContracts } from './components/vendor/VendorContracts';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Chatbot } from './components/Chatbot';
+import '../styles/index.css';
 
 type AuthFlow = 'landing' | 'login' | 'signup' | 'forgot-password' | 'enter-otp' | 'reset-password' | 'password-reset-success';
 
@@ -31,6 +35,18 @@ interface NavState {
   activePage: string;
   currentVendorPage: 'dashboard' | 'resources' | 'contracts';
   userRole: 'vendor' | 'client' | null;
+  showRoleSelection: boolean;
+}
+
+// Wrapper component that provides both Theme and Toast contexts
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </ThemeProvider>
+  );
 }
 
 export default function App() {
@@ -38,6 +54,7 @@ export default function App() {
   const [authFlow, setAuthFlow] = useState<AuthFlow>('landing');
   const [resetEmail, setResetEmail] = useState('');
   const [userRole, setUserRole] = useState<'vendor' | 'client' | null>(null);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [activePage, setActivePage] = useState('dashboard');
   const [showPostRequirement, setShowPostRequirement] = useState(false);
   const [searchFilters, setSearchFilters] = useState<{ jobId?: string; matchCount?: number }>({});
@@ -45,40 +62,45 @@ export default function App() {
   const [currentVendorPage, setCurrentVendorPage] = useState<'dashboard' | 'resources' | 'contracts'>('dashboard');
   const [vendorSidebarCollapsed, setVendorSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
-  // Ref to always have current nav state for history pushes
-  const navRef = useRef<NavState>({ isLoggedIn: false, authFlow: 'landing', activePage: 'dashboard', currentVendorPage: 'dashboard', userRole: null });
+  const navRef = useRef<NavState>({
+    isLoggedIn: false,
+    authFlow: 'landing',
+    activePage: 'dashboard',
+    currentVendorPage: 'dashboard',
+    userRole: null,
+    showRoleSelection: false
+  });
+
   useEffect(() => {
-    navRef.current = { isLoggedIn, authFlow, activePage, currentVendorPage, userRole };
-  }, [isLoggedIn, authFlow, activePage, currentVendorPage, userRole]);
+    navRef.current = { isLoggedIn, authFlow, activePage, currentVendorPage, userRole, showRoleSelection };
+  }, [isLoggedIn, authFlow, activePage, currentVendorPage, userRole, showRoleSelection]);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
 
-  // ── Browser history: stamp initial state on first load ──────
   useEffect(() => {
     window.history.replaceState(navRef.current, '');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ── Browser back / forward ───────────────────────────────────
   useEffect(() => {
     const handlePop = (e: PopStateEvent) => {
       if (!e.state) return;
       const s = e.state as NavState;
       const token = getToken();
-      // Guard: if history says logged-in but token is gone, show landing
       const loggedIn = s.isLoggedIn && !!token;
       setIsLoggedIn(loggedIn);
       setAuthFlow(loggedIn ? (s.authFlow ?? 'landing') : 'landing');
       setActivePage(s.activePage ?? 'dashboard');
       setCurrentVendorPage(s.currentVendorPage ?? 'dashboard');
       setUserRole(loggedIn ? (s.userRole ?? null) : null);
+      setShowRoleSelection(s.showRoleSelection ?? false);
       setIsMobileSidebarOpen(false);
     };
     window.addEventListener('popstate', handlePop);
     return () => window.removeEventListener('popstate', handlePop);
   }, []);
 
-  // Helper: update state and push a history entry
   const navigate = (updates: Partial<NavState>) => {
     const next: NavState = { ...navRef.current, ...updates };
     window.history.pushState(next, '');
@@ -87,10 +109,10 @@ export default function App() {
     if (updates.activePage !== undefined) setActivePage(updates.activePage);
     if (updates.currentVendorPage !== undefined) setCurrentVendorPage(updates.currentVendorPage);
     if (updates.userRole !== undefined) setUserRole(updates.userRole);
+    if (updates.showRoleSelection !== undefined) setShowRoleSelection(updates.showRoleSelection);
   };
 
-  // ── Login / Logout ───────────────────────────────────────────
-  const handleLogin = async (email: string, password: string, role: 'client' | 'vendor') => {
+  const handleLogin = async (email: string, password: string) => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -103,22 +125,48 @@ export default function App() {
         try {
           const errData = await response.json();
           errorMsg = errData.detail || errorMsg;
-        } catch {}
+        } catch { }
         alert(errorMsg);
-        return;
+        return { success: false };
       }
 
       const data = await response.json();
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
-      localStorage.setItem('user_role', role);
 
-      navigate({ isLoggedIn: true, userRole: role, activePage: 'dashboard', currentVendorPage: 'dashboard' });
+      const userResponse = await fetch('/api/users/me', {
+        headers: { 'Authorization': `Bearer ${data.access_token}` }
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setUserEmail(userData.email);
+      }
+
+      navigate({
+        isLoggedIn: true,
+        userRole: null,
+        showRoleSelection: true,
+        activePage: 'dashboard',
+        currentVendorPage: 'dashboard'
+      });
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       alert('Cannot reach server. Make sure the backend is running on port 8000.');
+      return { success: false };
     }
+  };
+
+  const handleRoleSelection = (role: 'vendor' | 'client') => {
+    localStorage.setItem('user_role', role);
+    navigate({
+      userRole: role,
+      showRoleSelection: false,
+      activePage: 'dashboard',
+      currentVendorPage: 'dashboard'
+    });
   };
 
   const handleLogout = () => {
@@ -126,10 +174,17 @@ export default function App() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
-    navigate({ isLoggedIn: false, authFlow: 'landing', activePage: 'dashboard', currentVendorPage: 'dashboard', userRole: null });
+    setUserEmail('');
+    navigate({
+      isLoggedIn: false,
+      authFlow: 'landing',
+      activePage: 'dashboard',
+      currentVendorPage: 'dashboard',
+      userRole: null,
+      showRoleSelection: false
+    });
   };
 
-  // ── Client navigation ────────────────────────────────────────
   const handleClientPageChange = (page: string) => {
     navigate({ activePage: page });
   };
@@ -148,12 +203,10 @@ export default function App() {
     setShowPostRequirement(true);
   };
 
-  // ── Vendor navigation ────────────────────────────────────────
   const handleVendorPageChange = (page: 'dashboard' | 'resources' | 'contracts') => {
     navigate({ currentVendorPage: page });
   };
 
-  // ── Auth flow navigation ─────────────────────────────────────
   const handleForgotPassword = () => navigate({ authFlow: 'forgot-password' });
   const handleSignup = () => navigate({ authFlow: 'signup' });
   const handleBackToLogin = () => navigate({ authFlow: 'login' });
@@ -180,20 +233,17 @@ export default function App() {
     navigate({ authFlow: 'password-reset-success' });
   };
 
-  // ── Auth screens (not logged in) ─────────────────────────────
-  if (!isLoggedIn) {
-    if (authFlow === 'landing') {
-      return (
-        <ThemeProvider>
-          <LandingPageV2 onLoginClick={handleLandingLogin} onGetStartedClick={handleLandingGetStarted} />
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'login') {
-      return (
-        <ThemeProvider>
+  // Function to render the appropriate content based on state
+  const renderContent = () => {
+    // Auth screens (not logged in)
+    if (!isLoggedIn) {
+      if (authFlow === 'landing') {
+        return <LandingPageV2 onLoginClick={handleLandingLogin} onGetStartedClick={handleLandingGetStarted} />;
+      }
+      if (authFlow === 'login') {
+        return (
           <div>
-            <RoleBasedLoginPage
+            <LoginPage
               onLogin={handleLogin}
               onForgotPassword={handleForgotPassword}
               onSignup={handleSignup}
@@ -201,65 +251,67 @@ export default function App() {
             />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'signup') {
-      return (
-        <ThemeProvider>
+        );
+      }
+      if (authFlow === 'signup') {
+        return (
           <div>
             <SignupPage onSignup={handleSignupComplete} onBackToLogin={handleBackToLogin} onBackToHome={handleBackToHome} />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'forgot-password') {
-      return (
-        <ThemeProvider>
+        );
+      }
+      if (authFlow === 'forgot-password') {
+        return (
           <div>
             <ForgotPasswordPage onBackToLogin={handleBackToLogin} onSendCode={handleSendResetCode} />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'enter-otp') {
-      return (
-        <ThemeProvider>
+        );
+      }
+      if (authFlow === 'enter-otp') {
+        return (
           <div>
             <EnterOTPPage email={resetEmail} onBackToLogin={handleBackToLogin} onVerifyCode={handleVerifyOTP} onResendCode={handleResendCode} />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'reset-password') {
-      return (
-        <ThemeProvider>
+        );
+      }
+      if (authFlow === 'reset-password') {
+        return (
           <div>
             <ResetPasswordPage onBackToLogin={handleBackToLogin} onResetPassword={handleResetPassword} />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
-      );
-    }
-    if (authFlow === 'password-reset-success') {
-      return (
-        <ThemeProvider>
+        );
+      }
+      if (authFlow === 'password-reset-success') {
+        return (
           <div>
             <PasswordResetSuccessPage onBackToLogin={handleBackToLogin} />
             <Chatbot isLoggedIn={false} />
           </div>
-        </ThemeProvider>
+        );
+      }
+    }
+
+    // Role selection after login
+    if (isLoggedIn && showRoleSelection) {
+      return (
+        <>
+          <RoleSelectionAfterLogin
+            onSelectRole={handleRoleSelection}
+            onLogout={handleLogout}
+            userEmail={userEmail}
+          />
+          <Chatbot isLoggedIn={true} />
+        </>
       );
     }
-  }
 
-  // ── Vendor Portal ────────────────────────────────────────────
-  if (userRole === 'vendor') {
-    return (
-      <ThemeProvider>
+    // Vendor Portal
+    if (userRole === 'vendor') {
+      return (
         <div className="min-h-screen bg-background">
           <VendorSidebar
             currentPage={currentVendorPage}
@@ -289,14 +341,12 @@ export default function App() {
           <ScrollToTop />
           <Chatbot isLoggedIn={true} />
         </div>
-      </ThemeProvider>
-    );
-  }
+      );
+    }
 
-  // ── Client Portal ────────────────────────────────────────────
-  if (userRole === 'client') {
-    return (
-      <ThemeProvider>
+    // Client Portal
+    if (userRole === 'client') {
+      return (
         <div className="min-h-screen bg-background">
           <Sidebar
             activePage={activePage}
@@ -342,9 +392,16 @@ export default function App() {
           <ScrollToTop />
           <Chatbot isLoggedIn={true} />
         </div>
-      </ThemeProvider>
-    );
-  }
+      );
+    }
 
-  return null;
+    return null;
+  };
+
+  // Wrap everything with providers
+  return (
+    <AppProviders>
+      {renderContent()}
+    </AppProviders>
+  );
 }

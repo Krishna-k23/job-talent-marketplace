@@ -6,9 +6,63 @@ from app.models import User, Requirement, Resource, Match
 from app.schemas import RequirementCreate, RequirementUpdate, RequirementResponse, MatchResponse
 from app.dependencies import get_current_user, get_current_client
 from app.utils.helpers import generate_requirement_id
+from fastapi import UploadFile, File
+import pandas as pd
+import io
 
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
 
+@router.post("/bulk-upload")
+async def bulk_upload_requirements(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_client),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Read the file
+        contents = await file.read()
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+        else:  # Excel file
+            df = pd.read_excel(io.BytesIO(contents))
+        
+        requirements_created = []
+        
+        for _, row in df.iterrows():
+            requirement = Requirement(
+                requirement_id=generate_requirement_id(),
+                client_id=current_user.id,
+                role=row.get('role', ''),
+                experience_min=int(row.get('experience_min', 0)) if pd.notna(row.get('experience_min')) else None,
+                experience_max=int(row.get('experience_max', 0)) if pd.notna(row.get('experience_max')) else None,
+                positions=int(row.get('positions', 1)) if pd.notna(row.get('positions')) else 1,
+                skills=row.get('skills', '').split(',') if pd.notna(row.get('skills')) else [],
+                budget_min=float(row.get('budget_min', 0)) if pd.notna(row.get('budget_min')) else None,
+                budget_max=float(row.get('budget_max', 0)) if pd.notna(row.get('budget_max')) else None,
+                duration=row.get('duration', '6 Months') if pd.notna(row.get('duration')) else '6 Months',
+                work_mode=row.get('work_mode', 'Remote') if pd.notna(row.get('work_mode')) else 'Remote',
+                start_date=row.get('start_date', 'Immediate') if pd.notna(row.get('start_date')) else 'Immediate',
+                location=row.get('location', '') if pd.notna(row.get('location')) else None,
+                description=row.get('description', '') if pd.notna(row.get('description')) else None,
+                status="Open"
+            )
+            db.add(requirement)
+            requirements_created.append(requirement)
+        
+        db.commit()
+        
+        # Generate matches for each requirement
+        for req in requirements_created:
+            match_resources(req, db)
+        
+        return {"message": f"Successfully created {len(requirements_created)} requirements", "count": len(requirements_created)}
+    
+    except Exception as e:
+        db.rollback()
+        print(f"Error in bulk upload: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    
 @router.get("/", response_model=List[RequirementResponse])
 def get_requirements(
     skip: int = Query(0, ge=0),

@@ -1,14 +1,16 @@
 import { defineConfig } from 'vite'
 import path from 'path'
-import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 function figmaAssetResolver() {
   return {
     name: 'figma-asset-resolver',
-    resolveId(id) {
+
+    resolveId(id: string) {
       if (id.startsWith('figma:asset/')) {
         const filename = id.replace('figma:asset/', '')
+
         return path.resolve(__dirname, 'src/assets', filename)
       }
     },
@@ -21,17 +23,24 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+
   server: {
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: true,
 
     proxy: {
+      '/auth': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
@@ -39,5 +48,6 @@ export default defineConfig({
       },
     },
   },
+
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })

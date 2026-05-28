@@ -68,6 +68,8 @@ class CompanyResponse(CompanyBase):
     class Config:
         from_attributes = True
 
+# app/schemas.py - Update User schemas
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
@@ -88,6 +90,7 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     vendor_name: Optional[str] = None
+    profile_picture: Optional[str] = None  # Add this line
     created_at: datetime
     
     class Config:
@@ -97,6 +100,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     vendor_name: Optional[str] = None
+    profile_picture: Optional[str] = None  # Add this line
 
 # Requirement Schemas
 class RequirementBase(BaseModel):

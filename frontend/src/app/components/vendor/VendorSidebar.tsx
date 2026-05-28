@@ -65,11 +65,10 @@ export function VendorSidebar({ currentPage, onNavigate, isCollapsed, onToggleCo
                   <button
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
-                    className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
-                      isActive
+                    className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${isActive
                         ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30 scale-[1.02]'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-600 dark:hover:text-purple-400'
-                    }`}
+                      }`}
                   >
                     {isActive && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>

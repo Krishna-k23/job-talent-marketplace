@@ -112,12 +112,19 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/send-otp")
 def send_otp(request: OTPRequest, db: Session = Depends(get_db)):
+    print(f"=== SEND OTP ENDPOINT HIT ===")
+    print(f"Request email: {request.email}")
+    
+    # Check if user exists
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
+        print(f"User not found: {request.email}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+    
+    print(f"User found: {user.email}")
     
     # Use STATIC OTP for testing
     otp_code = STATIC_OTP
@@ -129,6 +136,7 @@ def send_otp(request: OTPRequest, db: Session = Depends(get_db)):
         OTP.is_used == False
     ).update({"is_used": True})
     
+    # Create new OTP
     otp = OTP(
         email=request.email, 
         otp=otp_code, 
@@ -144,12 +152,14 @@ def send_otp(request: OTPRequest, db: Session = Depends(get_db)):
     print(f"  STATIC OTP: {otp_code}")
     print(f"{'='*50}\n")
     
+    # Try to send email but don't fail if it doesn't work
     try:
         send_otp_email(request.email, otp_code, "password_reset")
+        print(f"Email sent to {request.email}")
     except Exception as e:
         print(f"Email sending failed (using static OTP): {e}")
     
-    return {"message": "OTP sent successfully"}
+    return {"message": "OTP sent successfully", "otp": otp_code}  # Return OTP for testing
 
 @router.post("/verify-otp")
 def verify_otp(request: OTPVerifyRequest, db: Session = Depends(get_db)):
