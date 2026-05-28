@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import React from 'react'
 import { MessageCircle, X, Send, User, Bot, LogIn, UserPlus, HelpCircle, Phone, FileText, Users, Briefcase, DollarSign, Settings, Headphones } from 'lucide-react';
 
 interface Message {
@@ -181,7 +182,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
     setTimeout(() => {
       const botResponse: Message = {
         id: messages.length + 2,
-        text: isLoggedIn 
+        text: isLoggedIn
           ? "Thank you for your message! Our team will assist you shortly. For immediate help, please check our FAQ section or contact support."
           : "Thank you for your message! Please log in to continue the conversation. You can sign in using the 'Sign In' button on the top right.",
         sender: 'bot',
@@ -218,7 +219,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       {/* Chat Window - Responsive Design */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 animate-in zoom-in-95 fade-in duration-300">
-          <div 
+          <div
             ref={chatContainerRef}
             className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
             style={{
@@ -254,16 +255,14 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-start gap-3 ${
-                    message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  className={`flex items-start gap-3 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
+                    }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.sender === 'bot'
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.sender === 'bot'
                         ? 'bg-gradient-to-br from-blue-600 to-cyan-600'
                         : 'bg-gradient-to-br from-purple-600 to-pink-600'
-                    }`}
+                      }`}
                   >
                     {message.sender === 'bot' ? (
                       <Bot size={18} className="text-white" />
@@ -272,17 +271,15 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
                     )}
                   </div>
                   <div
-                    className={`max-w-[75%] px-4 py-3 rounded-2xl ${
-                      message.sender === 'bot'
+                    className={`max-w-[75%] px-4 py-3 rounded-2xl ${message.sender === 'bot'
                         ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
                         : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm leading-relaxed break-words">{message.text}</p>
                     <p
-                      className={`text-xs mt-1 ${
-                        message.sender === 'bot' ? 'text-slate-400' : 'text-blue-100'
-                      }`}
+                      className={`text-xs mt-1 ${message.sender === 'bot' ? 'text-slate-400' : 'text-blue-100'
+                        }`}
                     >
                       {message.timestamp.toLocaleTimeString([], {
                         hour: '2-digit',

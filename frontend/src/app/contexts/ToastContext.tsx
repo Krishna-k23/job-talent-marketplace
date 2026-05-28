@@ -1,5 +1,5 @@
 // src/contexts/ToastContext.tsx
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { Toast, ToastType } from '../components/Toast';
 
 interface ToastMessage {
@@ -18,7 +18,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const removeToast = useCallback((id: string) => {

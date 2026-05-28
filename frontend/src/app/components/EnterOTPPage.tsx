@@ -1,4 +1,5 @@
 import { useState, useRef, KeyboardEvent } from 'react';
+import React from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import imgBg from 'figma:asset/d55c043b01555d928cb9cb8230fa722c39d2b527.png';
@@ -95,7 +96,9 @@ export function EnterOTPPage({ email, onBackToLogin, onVerifyCode, onResendCode 
                 {otp.map((digit, index) => (
                   <input
                     key={index}
-                    ref={(el) => (inputRefs.current[index] = el)}
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     maxLength={1}

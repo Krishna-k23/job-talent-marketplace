@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import React from 'react'
 import { Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import imgBg from 'figma:asset/d55c043b01555d928cb9cb8230fa722c39d2b527.png';

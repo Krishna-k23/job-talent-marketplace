@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect} from 'react';
+import React from 'react'
 import { Search, SlidersHorizontal, MapPin, Calendar, DollarSign, Eye, X, FileSearch } from 'lucide-react';
 import { ResourceDetailModal } from './ResourceDetailModal';
 import { Pagination } from './Pagination';

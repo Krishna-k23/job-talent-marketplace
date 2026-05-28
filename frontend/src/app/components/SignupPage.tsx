@@ -1,5 +1,6 @@
 // components/SignupPage.tsx
 import { useState } from 'react';
+import React from 'react'
 import { Globe, Building2, Mail, Phone, User, Upload, ArrowRight, ArrowLeft, Check, Lock, Eye, EyeOff } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 

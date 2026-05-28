@@ -1,5 +1,6 @@
 // components/LoginPage.tsx
 import { useState } from 'react';
+import React from 'react';
 import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 

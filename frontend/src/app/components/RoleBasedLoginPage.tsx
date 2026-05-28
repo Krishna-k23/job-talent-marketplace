@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, memo } from 'react';
+import React from 'react'
 import { Users, Briefcase, ArrowRight, Mail, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 

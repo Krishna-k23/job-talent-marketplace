@@ -1,6 +1,6 @@
 // components/RoleSelectionAfterLogin.tsx
-import { useState, useEffect } from 'react';
-import React from 'react';
+import { useState, useEffect} from 'react';
+import React from 'react'
 import { Users, Briefcase, ArrowRight, CheckCircle, LogOut } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../contexts/ThemeContext';
