@@ -100,7 +100,7 @@ export function Billing() {
       </div>
 
       {/* Subscription Plans */}
-      <div>
+      {/* <div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 sm:mb-6">
           Choose Your Plan
         </h2>
@@ -153,7 +153,7 @@ export function Billing() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Payment History */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">

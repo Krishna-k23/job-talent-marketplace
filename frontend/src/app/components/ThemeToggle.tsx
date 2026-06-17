@@ -12,7 +12,7 @@ export function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
     return (
       <button
         onClick={toggleTheme}
-        className="w-10 h-10 bg-card/90 dark:bg-white/10 backdrop-blur-lg border border-border dark:border-white/20 rounded-xl flex items-center justify-center hover:bg-card dark:hover:bg-white/20 transition-all duration-200 shadow-sm"
+        className="w-10 h-10 bg-card/90 cursor-pointer dark:bg-white/10 backdrop-blur-lg border border-border dark:border-white/20 rounded-xl flex items-center justify-center hover:bg-card dark:hover:bg-white/20 transition-all duration-200 shadow-sm"
         aria-label="Toggle theme"
       >
         {theme === 'light' ? (
@@ -27,7 +27,7 @@ export function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
   return (
     <button
       onClick={toggleTheme}
-      className="relative w-14 h-7 bg-secondary rounded-full transition-all duration-300 hover:bg-muted"
+      className="relative w-14 h-7 cursor-pointer bg-secondary rounded-full transition-all duration-300 hover:bg-muted"
       aria-label="Toggle theme"
     >
       <div

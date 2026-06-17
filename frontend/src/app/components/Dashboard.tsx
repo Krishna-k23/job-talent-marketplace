@@ -1,6 +1,6 @@
-// Dashboard.tsx - Updated with toast notifications
+// Dashboard.tsx - Updated with token refresh, better error handling, and upload loader
 import { useState, useEffect } from 'react';
-import { Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, MapPin, Briefcase, Target, Plus, Upload, ArrowRight, Activity, X, Download } from 'lucide-react';
+import { Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, MapPin, Briefcase, Target, Plus, Upload, ArrowRight, Activity, X, Download, Loader2 } from 'lucide-react';
 import { PostRequirement } from './PostRequirement';
 import { useToast } from '../contexts/ToastContext';
 
@@ -9,7 +9,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onViewMatches }: DashboardProps) {
-  const { showSuccess, showError } = useToast();  // ADD THIS LINE
+  const { showSuccess, showError } = useToast();
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [stats, setStats] = useState({
     totalRequirements: 0,
@@ -28,16 +28,86 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
 
+  // Token refresh function
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return false;
+
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  };
+
+  // API call with token refresh
+  const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    let token = getToken();
+
+    if (!token) {
+      window.location.href = '/login';
+      throw new Error('No token found');
+    }
+
+    const makeRequest = async (retryToken?: string) => {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+        'Authorization': `Bearer ${retryToken || token}`
+      };
+
+      // For FormData, remove Content-Type header
+      if (options.body instanceof FormData) {
+        delete headers['Content-Type'];
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      return response;
+    };
+
+    let response = await makeRequest();
+
+    // If token expired, try to refresh
+    if (response.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        const newToken = getToken();
+        response = await makeRequest(newToken);
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+    }
+
+    return response;
+  };
+
   // Fetch dashboard stats from API
   const fetchStats = async () => {
-    const token = getToken();
-    if (!token) return;
-    
     try {
-      const response = await fetch('/api/dashboard/client/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
+      const response = await fetchWithAuth('/api/dashboard/client/stats');
+
       if (response.ok) {
         const data = await response.json();
         setStats({
@@ -51,22 +121,16 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
       console.error('Failed to fetch stats:', error);
     }
   };
-  
+
   const fetchRequirements = async () => {
-    const token = getToken();
-    if (!token) return;
-    
     try {
       const url = '/api/requirements/?limit=10';
-      
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
+      const response = await fetchWithAuth(url);
+
       if (response.ok) {
         const data = await response.json();
         setRequirements(data);
-        
+
         // Calculate requirements by role for chart
         const roleCounts: Record<string, number> = {};
         data.forEach((req: any) => {
@@ -82,15 +146,10 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
       setLoading(false);
     }
   };
-  
+
   const fetchUser = async () => {
-    const token = getToken();
-    if (!token) return;
-    
     try {
-      const response = await fetch('/api/users/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetchWithAuth('/api/users/me');
       if (response.ok) {
         const userData = await response.json();
         setUserName(userData.full_name || userData.email?.split('@')[0] || 'User');
@@ -111,40 +170,63 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     setShowPostRequirement(true);
   };
 
-  // Handle Bulk Upload - UPDATED with toast
+  // Handle Bulk Upload - Updated with token refresh and loader
   const handleBulkUpload = async () => {
     if (!bulkFile) {
-      showError('Please select a CSV file');  // REPLACED alert
+      showError('Please select a CSV file');
       return;
     }
-    
+
     setBulkUploading(true);
-    const token = getToken();
-    
+
     const formData = new FormData();
     formData.append('file', bulkFile);
-    
+
     try {
-      const response = await fetch('/api/requirements/bulk-upload', {
+      let token = getToken();
+      if (!token) {
+        showError('Please login again');
+        window.location.href = '/login';
+        return;
+      }
+
+      let response = await fetch('/api/requirements/bulk-upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
-      
+
+      // If token expired, try to refresh
+      if (response.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const newToken = getToken();
+          response = await fetch('/api/requirements/bulk-upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${newToken}` },
+            body: formData
+          });
+        } else {
+          showError('Session expired. Please login again.');
+          window.location.href = '/login';
+          return;
+        }
+      }
+
       if (response.ok) {
         const result = await response.json();
-        showSuccess(`Successfully uploaded ${result.count || result.length || 0} requirements`);  // REPLACED alert
+        showSuccess(`Successfully uploaded ${result.count || result.length || 0} requirements`);
         setShowBulkUpload(false);
         setBulkFile(null);
         fetchRequirements();
         fetchStats();
       } else {
         const error = await response.json();
-        showError(error.detail || 'Upload failed. Please check the file format.');  // REPLACED alert
+        showError(error.detail || 'Upload failed. Please check the file format.');
       }
     } catch (error) {
       console.error('Bulk upload error:', error);
-      showError('Upload failed. Please try again.');  // REPLACED alert
+      showError('Upload failed. Please try again.');
     } finally {
       setBulkUploading(false);
     }
@@ -152,18 +234,20 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
 
   // Handle Download CSV Template
   const handleDownloadTemplate = () => {
-    const csvContent = `Role,Experience Min,Experience Max,Positions,Skills,Budget Min,Budget Max,Duration,Work Mode,Start Date,Location,Description
-DevOps Engineer,5,8,2,"AWS,Docker,Kubernetes",100000,150000,12 Months,Hybrid,Immediate,Bangalore,"Looking for DevOps engineer"
+    const csvContent = `role,experience_min,experience_max,positions,skills,budget_min,budget_max,duration,work_mode,start_date,location,description
+DevOps Engineer,5,8,2,"AWS,Docker,Kubernetes",100000,150000,12 Months,Hybrid,Immediate,Bangalore,"Looking for experienced DevOps engineer"
 Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,Remote,Immediate,Pune,"Lead Java developer"`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'requirements_template.csv';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    showSuccess('Template downloaded successfully!');  // OPTIONAL: Add success toast
+    showSuccess('Template downloaded successfully!');
   };
 
   const summaryStats = [
@@ -207,30 +291,80 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-cyan-600 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">Bulk Upload Requirements</h3>
-              <button onClick={() => setShowBulkUpload(false)} className="p-1 hover:bg-white/20 rounded-lg">
-                <X size={24} className="text-white" />
+              <button
+                onClick={() => {
+                  if (!bulkUploading) {
+                    setShowBulkUpload(false);
+                    setBulkFile(null);
+                  }
+                }}
+                className="p-1 hover:bg-white/20 rounded-lg disabled:opacity-50"
+                disabled={bulkUploading}
+              >
+                <X size={24} className="text-white cursor-pointer" />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                <Upload size={40} className="mx-auto text-slate-400 mb-3" />
-                <p className="text-sm text-slate-600 mb-2">Click to upload CSV file</p>
-                <p className="text-xs text-slate-400">Download template for correct format</p>
-                <input type="file" accept=".csv" onChange={(e) => setBulkFile(e.target.files?.[0] || null)} className="hidden" id="bulk-file" />
-                <label htmlFor="bulk-file" className="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm cursor-pointer hover:bg-blue-700">
-                  Choose File
-                </label>
-                {bulkFile && <p className="mt-2 text-sm text-green-600">Selected: {bulkFile.name}</p>}
-              </div>
-              <button onClick={handleDownloadTemplate} className="w-full py-2 text-blue-600 text-sm font-semibold hover:underline">
-                Download CSV Template
-              </button>
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => setShowBulkUpload(false)} className="flex-1 px-6 py-3 border rounded-xl">Cancel</button>
-                <button onClick={handleBulkUpload} disabled={bulkUploading} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl disabled:opacity-50">
-                  {bulkUploading ? 'Uploading...' : 'Upload'}
-                </button>
-              </div>
+              {bulkUploading ? (
+                // Uploading loader
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 size={48} className="text-primary animate-spin mb-4" />
+                  <p className="text-lg font-semibold text-foreground">Uploading...</p>
+                  <p className="text-sm text-muted-foreground">Please wait while we process your file</p>
+                  <div className="w-full max-w-xs mt-4 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={() => document.getElementById('bulk-file')?.click()}
+                  >
+                    <Upload size={40} className="mx-auto text-slate-400 mb-3" />
+                    <p className="text-sm text-slate-600 mb-2">Click to upload CSV file</p>
+                    <p className="text-xs text-slate-400">Download template for correct format</p>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setBulkFile(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="bulk-file"
+                    />
+                    <label htmlFor="bulk-file" className="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm cursor-pointer hover:bg-blue-700">
+                      Choose File
+                    </label>
+                    {bulkFile && <p className="mt-2 text-sm text-green-600">Selected: {bulkFile.name}</p>}
+                  </div>
+                  <button onClick={handleDownloadTemplate} className="w-full py-2 text-blue-600 text-sm font-semibold hover:underline cursor-pointer">
+                    Download CSV Template
+                  </button>
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => {
+                        setShowBulkUpload(false);
+                        setBulkFile(null);
+                      }}
+                      className="flex-1 px-6 py-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleBulkUpload}
+                      disabled={!bulkFile}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-cyan-700 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Upload size={18} />
+                      Upload
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -272,7 +406,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Active Requirements</h2>
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
               {(['all', 'open', 'closed'] as const).map((filter) => (
-                <button key={filter} onClick={() => setStatusFilter(filter)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${statusFilter === filter ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}>
+                <button key={filter} onClick={() => setStatusFilter(filter)} className={`px-4 py-2 text-sm font-medium cursor-pointer rounded-lg transition-all ${statusFilter === filter ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}>
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </button>
               ))}
@@ -310,7 +444,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                     <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">{skill}</span>
                   ))}
                 </div>
-                <button onClick={() => onViewMatches?.(req.id, req.matches_count || 0)} className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
+                <button onClick={() => onViewMatches?.(req.id, req.matches_count || 0)} className="w-full py-3 bg-gradient-to-r cursor-pointer from-blue-600 to-cyan-600 hover:from-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
                   View {req.matches_count || 0} Profiles <ArrowRight size={16} />
                 </button>
               </div>
@@ -323,13 +457,13 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
             <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button onClick={handleAddRequirement} className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 transition-all">
+              <button onClick={handleAddRequirement} className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 transition-all cursor-pointer">
                 <Plus size={20} /><span className="font-semibold">Add Requirement</span>
               </button>
-              <button onClick={() => setShowBulkUpload(true)} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all">
+              <button onClick={() => setShowBulkUpload(true)} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer">
                 <Upload size={20} /><span className="font-semibold">Bulk Upload</span>
               </button>
-              <button onClick={handleDownloadTemplate} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all">
+              <button onClick={handleDownloadTemplate} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer">
                 <Download size={20} /><span className="font-semibold">Download Template</span>
               </button>
             </div>
@@ -338,8 +472,24 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
             <h3 className="text-lg font-bold mb-4">Requirements by Status</h3>
             <div className="space-y-4">
-              <div><div className="flex justify-between mb-2"><span className="text-sm">Open</span><span className="text-sm font-bold">{stats.openRequirements}</span></div><div className="w-full bg-slate-100 rounded-full h-3"><div className="h-full bg-orange-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.openRequirements / stats.totalRequirements) * 100 : 0}%` }}></div></div></div>
-              <div><div className="flex justify-between mb-2"><span className="text-sm">Closed</span><span className="text-sm font-bold">{stats.closedRequirements}</span></div><div className="w-full bg-slate-100 rounded-full h-3"><div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.closedRequirements / stats.totalRequirements) * 100 : 0}%` }}></div></div></div>
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm">Open</span>
+                  <span className="text-sm font-bold">{stats.openRequirements}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3">
+                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.openRequirements / stats.totalRequirements) * 100 : 0}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm">Closed</span>
+                  <span className="text-sm font-bold">{stats.closedRequirements}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3">
+                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.closedRequirements / stats.totalRequirements) * 100 : 0}%` }}></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

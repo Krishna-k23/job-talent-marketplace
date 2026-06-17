@@ -1,4 +1,4 @@
-import { useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import React from 'react'
 import { Search, SlidersHorizontal, MapPin, Calendar, DollarSign, Eye, X, FileSearch } from 'lucide-react';
 import { ResourceDetailModal } from './ResourceDetailModal';
@@ -35,12 +35,12 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
       console.log('No token found');
       return;
     }
-    
+
     setLoading(true);
     try {
       let url = '/api/resources/?';
       const params: string[] = [];
-      
+
       if (searchKeyword) {
         params.push(`search=${encodeURIComponent(searchKeyword)}`);
       }
@@ -56,16 +56,16 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
       if (selectedBudget.length) {
         params.push(`budget=${selectedBudget.join(',')}`);
       }
-      
+
       url += params.join('&');
-      
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         // Format the data
@@ -114,29 +114,43 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
   const fetchMatchesForJob = async (jobId: string) => {
     const token = getToken();
     if (!token) return;
-    
+
+    // Find the requirement by its string ID to get the numeric ID
     try {
-      const response = await fetch(`/api/requirements/${jobId}/matches`, {
+      // First get all requirements to find the one with matching requirement_id
+      const reqResponse = await fetch('/api/requirements/?limit=100', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const formattedData = data.map((match: any) => ({
-          id: match.id,
-          resource_id: match.resource_id,
-          name: match.resource_name,
-          role: match.requirement_role,
-          experience: match.resource_experience,
-          availability: match.resource_availability,
-          rate: match.resource_rate ? `₹${match.resource_rate.toLocaleString()}/mo` : '₹0/mo',
-          location: 'Various',
-          skills: match.resource_skills || [],
-          match: match.match_score,
-          status: 'Available'
-        }));
-        setResources(formattedData);
-        setTotalResults(formattedData.length);
+
+      if (reqResponse.ok) {
+        const requirements = await reqResponse.json();
+        const requirement = requirements.find((r: any) => r.requirement_id === jobId);
+
+        if (requirement) {
+          // Use the numeric ID for the matches endpoint
+          const response = await fetch(`/api/requirements/${requirement.id}/matches`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const formattedData = data.map((match: any) => ({
+              id: match.id,
+              resource_id: match.resource_id,
+              name: match.resource_name,
+              role: match.requirement_role,
+              experience: match.resource_experience,
+              availability: match.resource_availability,
+              rate: match.resource_rate ? `₹${match.resource_rate.toLocaleString()}/mo` : '₹0/mo',
+              location: 'Various',
+              skills: match.resource_skills || [],
+              match: match.match_score,
+              status: 'Available'
+            }));
+            setResources(formattedData);
+            setTotalResults(formattedData.length);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching matches:', error);
@@ -217,7 +231,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
     const expMatch = matchesExperienceFilter(resource.experience);
     const availMatch = selectedAvailability.length === 0 || selectedAvailability.includes(resource.availability);
     const budgetMatch = matchesBudgetFilter(resource.rate);
-    const searchMatch = searchKeyword === '' || 
+    const searchMatch = searchKeyword === '' ||
       resource.name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       resource.role?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       resource.skills?.some((s: string) => s.toLowerCase().includes(searchKeyword.toLowerCase()));
@@ -244,7 +258,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
             </h3>
             <button
               onClick={resetFilters}
-              className="text-sm text-primary hover:text-primary/80 font-semibold transition-colors"
+              className="text-sm cursor-pointer text-primary hover:text-primary/80 font-semibold transition-colors"
             >
               Reset
             </button>
@@ -259,11 +273,10 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
                   <button
                     key={skill}
                     onClick={() => toggleSkill(skill)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
-                      selectedSkills.includes(skill)
+                    className={`px-3 py-1.5 cursor-pointer text-xs font-semibold rounded-full transition-all duration-200 ${selectedSkills.includes(skill)
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-primary'
-                    }`}
+                      }`}
                   >
                     {skill}
                   </button>
@@ -341,7 +354,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
           <h1 className="text-2xl font-bold text-foreground">Search Resources</h1>
           <button
             onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-border dark:border-slate-700 rounded-lg text-sm font-medium text-foreground shadow-sm"
+            className="flex cursor-pointer items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-border dark:border-slate-700 rounded-lg text-sm font-medium text-foreground shadow-sm"
           >
             <SlidersHorizontal size={15} className="text-primary" />
             Filters
@@ -362,7 +375,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
             </div>
             <button
               onClick={() => setShowFilterBanner(false)}
-              className="p-2 hover:bg-white/80 rounded-lg transition-all"
+              className="p-2 cursor-pointer hover:bg-white/80 rounded-lg transition-all"
             >
               <X size={18} className="text-muted-foreground" />
             </button>
@@ -402,7 +415,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
             <p className="text-muted-foreground mb-6">Try adjusting your filters or search keywords</p>
             <button
               onClick={resetFilters}
-              className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
+              className="px-6 py-2.5 cursor-pointer bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
             >
               Clear All Filters
             </button>
@@ -417,11 +430,10 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
                 >
                   {/* Match Badge */}
                   <div className="absolute top-4 right-4">
-                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                      resource.match >= 90 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
-                      resource.match >= 85 ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400' :
-                      'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
-                    }`}>
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${resource.match >= 90 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
+                        resource.match >= 85 ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400' :
+                          'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
+                      }`}>
                       {resource.match}% Match
                     </span>
                   </div>
@@ -475,7 +487,7 @@ export function SearchResources({ preFilteredJobId, preFilteredCount }: SearchRe
 
                   <button
                     onClick={() => setSelectedResource(resource)}
-                    className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
+                    className="w-full h-11 cursor-pointer bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
                   >
                     <Eye size={16} />
                     View Profile

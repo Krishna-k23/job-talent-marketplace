@@ -1,38 +1,166 @@
 import { useEffect, useState } from 'react';
-import { Bell, Shield, CreditCard, User, Building2 } from 'lucide-react';
+import { Bell, Shield, CreditCard, User, Building2, Save, Loader2 } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
+
+interface CompanyData {
+  name: string;
+  website: string;
+  industry: string;
+  description: string;
+  size?: string;
+}
+
+interface UserData {
+  id?: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  designation: string;
+  role?: string;
+  company_id?: number;
+  company?: CompanyData;
+}
 
 export function Settings() {
-
-  const [formData, setFormData] = useState({
+  const { showSuccess, showError } = useToast();
+  const [formData, setFormData] = useState<UserData>({
     first_name: '',
     last_name: '',
     email: '',
     phone: '',
+    designation: '',
+    company: {
+      name: '',
+      website: '',
+      industry: '',
+      description: '',
+    }
   });
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+
+  // Token refresh function
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return false;
+      
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  };
+
+  // API call with token refresh
+  const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    let token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    
+    if (!token) {
+      window.location.href = '/login';
+      throw new Error('No token found');
+    }
+    
+    const makeRequest = async (retryToken?: string) => {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${retryToken || token}`
+      };
+      
+      if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...headers,
+          ...(options.headers || {})
+        }
+      });
+      
+      return response;
+    };
+    
+    let response = await makeRequest();
+    
+    if (response.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        const newToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+        response = await makeRequest(newToken);
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+    }
+    
+    return response;
+  };
 
   // Fetch user data on load
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token');
+        setFetching(true);
+        const response = await fetchWithAuth('/api/users/me');
 
-        const response = await fetch('/api/users/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await response.json();
-
-        setFormData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-        });
-
+        if (response.ok) {
+          const data = await response.json();
+          
+          console.log('User data received:', data);
+          
+          // Parse full_name into first and last name
+          const fullName = data.full_name || '';
+          const nameParts = fullName.split(' ');
+          const firstName = data.first_name || nameParts[0] || '';
+          const lastName = data.last_name || nameParts.slice(1).join(' ') || '';
+          
+          // Get company data (either nested or at root level)
+          const companyData = data.company || {};
+          
+          setFormData({
+            id: data.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: data.email || '',
+            phone: data.phone || '',
+            designation: data.designation || '',
+            role: data.role || '',
+            company_id: data.company_id || companyData.id,
+            company: {
+              name: companyData.name || data.company_name || '',
+              website: companyData.website || data.website || '',
+              industry: companyData.industry || data.industry || '',
+              description: companyData.description || data.description || '',
+              size: companyData.size || data.company_size || '',
+            }
+          });
+        } else {
+          const error = await response.json();
+          showError(error.detail || 'Failed to load user data');
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
+        showError('Failed to load user data');
+      } finally {
+        setFetching(false);
       }
     };
 
@@ -41,24 +169,75 @@ export function Settings() {
 
   // Update user profile
   const handleSave = async () => {
+    setLoading(true);
+    
     try {
-      const token = localStorage.getItem('token');
+      // Prepare update data
+      const updateData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+        phone: formData.phone,
+        designation: formData.designation,
+        company: {
+          name: formData.company?.name || '',
+          website: formData.company?.website || '',
+          industry: formData.company?.industry || '',
+          description: formData.company?.description || '',
+        }
+      };
 
-      await fetch('/api/users/me', {
+      const response = await fetchWithAuth('/api/users/me', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updateData),
       });
 
-      alert('Profile updated successfully');
-
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Update response:', data);
+        
+        const companyData = data.company || {};
+        const fullName = data.full_name || '';
+        const nameParts = fullName.split(' ');
+        
+        setFormData({
+          ...formData,
+          first_name: data.first_name || nameParts[0] || formData.first_name,
+          last_name: data.last_name || nameParts.slice(1).join(' ') || formData.last_name,
+          email: data.email || formData.email,
+          phone: data.phone || formData.phone,
+          designation: data.designation || formData.designation,
+          company: {
+            name: companyData.name || data.company_name || formData.company?.name || '',
+            website: companyData.website || data.website || formData.company?.website || '',
+            industry: companyData.industry || data.industry || formData.company?.industry || '',
+            description: companyData.description || data.description || formData.company?.description || '',
+          }
+        });
+        
+        showSuccess('Profile updated successfully!');
+      } else {
+        const error = await response.json();
+        showError(error.detail || 'Failed to update profile');
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
+      showError('Failed to update profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 size={40} className="text-primary animate-spin" />
+          <p className="text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -66,6 +245,11 @@ export function Settings() {
       <div>
         <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2">Settings</h1>
         <p className="text-muted-foreground text-sm sm:text-base">Manage your account preferences and settings</p>
+        {formData.role && (
+          <span className="inline-block mt-2 px-3 py-1 text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
+            Role: {formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -88,8 +272,13 @@ export function Settings() {
                 <label className="block text-sm font-semibold text-foreground mb-2">Company Name</label>
                 <input
                   type="text"
-                  defaultValue="Infosys Ltd"
-                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                  value={formData.company?.name || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    company: { ...formData.company!, name: e.target.value } 
+                  })}
+                  placeholder="Enter company name"
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -97,18 +286,37 @@ export function Settings() {
                 <label className="block text-sm font-semibold text-foreground mb-2">Website</label>
                 <input
                   type="url"
-                  defaultValue="https://infosys.com"
-                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                  value={formData.company?.website || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    company: { ...formData.company!, website: e.target.value } 
+                  })}
+                  placeholder="https://example.com"
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Industry</label>
-                <select className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200">
-                  <option>Technology</option>
-                  <option>Finance</option>
-                  <option>Healthcare</option>
-                  <option>E-commerce</option>
+                <select
+                  value={formData.company?.industry || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    company: { ...formData.company!, industry: e.target.value } 
+                  })}
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                >
+                  <option value="">Select Industry</option>
+                  <option value="Technology">Technology</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="E-commerce">E-commerce</option>
+                  <option value="Manufacturing">Manufacturing</option>
+                  <option value="Education">Education</option>
+                  <option value="Consulting">Consulting</option>
+                  <option value="Real Estate">Real Estate</option>
+                  <option value="Transportation">Transportation</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
 
@@ -116,17 +324,15 @@ export function Settings() {
                 <label className="block text-sm font-semibold text-foreground mb-2">Description</label>
                 <textarea
                   rows={4}
-                  defaultValue="Leading global technology services company"
-                  className="w-full px-4 py-3 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none text-foreground dark:text-slate-200"
+                  value={formData.company?.description || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    company: { ...formData.company!, description: e.target.value } 
+                  })}
+                  placeholder="Tell us about your company..."
+                  className="w-full px-4 py-3 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                 />
               </div>
-
-              <button
-                onClick={handleSave}
-                className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
-              >
-                Save Changes
-              </button>
             </div>
           </div>
 
@@ -149,10 +355,9 @@ export function Settings() {
                   <input
                     type="text"
                     value={formData.first_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, first_name: e.target.value })
-                    }
-                    className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    placeholder="First name"
+                    className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                   />
                 </div>
                 <div>
@@ -160,12 +365,22 @@ export function Settings() {
                   <input
                     type="text"
                     value={formData.last_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, last_name: e.target.value })
-                    }
-                    className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    placeholder="Last name"
+                    className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Designation</label>
+                <input
+                  type="text"
+                  value={formData.designation}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                  placeholder="e.g., Senior Developer, Team Lead"
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
+                />
               </div>
 
               <div>
@@ -173,10 +388,10 @@ export function Settings() {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="your@email.com"
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
+                  disabled
                 />
               </div>
 
@@ -185,19 +400,11 @@ export function Settings() {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200"
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+91 98765 43210"
+                  className="w-full h-11 px-4 bg-secondary/30 dark:bg-slate-700 border border-input dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground dark:text-slate-200 placeholder:text-muted-foreground"
                 />
               </div>
-
-              <button
-                onClick={handleSave}
-                className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
-              >
-                Update Profile
-              </button>
             </div>
           </div>
         </div>
@@ -227,7 +434,7 @@ export function Settings() {
                 <span className="text-sm font-semibold text-foreground">15 Apr 2024</span>
               </div>
 
-              <button className="w-full h-10 border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold rounded-xl transition-all duration-200">
+              <button className="w-full h-10 border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold cursor-pointer rounded-xl transition-all duration-200">
                 Manage Billing
               </button>
             </div>
@@ -274,16 +481,37 @@ export function Settings() {
               <h2 className="text-xl font-bold text-foreground">Security</h2>
             </div>
 
-            <div className="space-y-3">
-              <button className="w-full h-10 text-sm font-semibold text-primary hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 text-left px-4">
+            {/* <div className="space-y-3">
+              <button className="w-full h-10 cursor-pointer text-sm font-semibold text-primary hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 text-left px-4">
                 Change Password
               </button>
-              <button className="w-full h-10 text-sm font-semibold text-primary hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 text-left px-4">
+              <button className="w-full h-10 cursor-pointer text-sm font-semibold text-primary hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 text-left px-4">
                 Enable Two-Factor Auth
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
+      </div>
+
+      {/* Save All Changes Button */}
+      <div className="flex justify-end pt-4">
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="px-8 py-3 bg-primary cursor-pointer hover:bg-primary-hover disabled:opacity-50 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25 flex items-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save size={18} />
+              <span>Save All Changes</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ db = SessionLocal()
 try:
     test_client = User(
         email="client@test.com",
-        hashed_password=get_password_hash("BenchBridge@2025"),
+        hashed_password=get_password_hash("BenchAstra@2025"),
         full_name="Test Client",
         phone="+91 98765 43219",
         role="client",
@@ -44,7 +44,7 @@ try:
 
     test_vendor = User(
         email="vendor@test.com",
-        hashed_password=get_password_hash("BenchBridge@2025"),
+        hashed_password=get_password_hash("BenchAstra@2025"),
         full_name="Test Vendor",
         phone="+91 98765 43220",
         role="vendor",
@@ -58,8 +58,8 @@ try:
 
     print("Database initialised successfully!")
     print("\nTest credentials:")
-    print("  Client : client@test.com / BenchBridge@2025")
-    print("  Vendor : vendor@test.com / BenchBridge@2025")
+    print("  Client : client@test.com / BenchAstra@2025")
+    print("  Vendor : vendor@test.com / BenchAstra@2025")
 
 except Exception as e:
     print(f"Error: {e}")

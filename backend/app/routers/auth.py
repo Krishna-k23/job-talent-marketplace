@@ -27,10 +27,16 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is deactivated",
         )
     
+    # ALWAYS use the role from the database, not from the request
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
     refresh_token = create_refresh_token(data={"sub": user.email})
     
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token, 
+        "token_type": "bearer",
+        "role": user.role  # Include role in response
+    }
 
 @router.post("/signup", response_model=UserResponse)
 def signup(request: UserCreate, db: Session = Depends(get_db)):
@@ -318,8 +324,6 @@ def reset_password(request: PasswordResetRequest, db: Session = Depends(get_db))
 
 @router.post("/refresh")
 def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
-    from app.auth import verify_token
-    
     try:
         payload = verify_token(refresh_token)
         if payload.get("type") != "refresh":

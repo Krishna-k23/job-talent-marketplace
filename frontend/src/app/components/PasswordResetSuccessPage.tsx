@@ -32,7 +32,7 @@ export function PasswordResetSuccessPage({ onBackToLogin }: PasswordResetSuccess
               <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span className="text-2xl font-bold text-white">BenchBridge</span>
+          <span className="text-2xl font-bold text-white">BenchAstra</span>
         </div>
 
         {/* Success Card */}
@@ -48,7 +48,7 @@ export function PasswordResetSuccessPage({ onBackToLogin }: PasswordResetSuccess
 
           <button
             onClick={onBackToLogin}
-            className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
+            className="w-full h-11 cursor-pointer bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
           >
             <span>Back to Login</span>
             <ArrowRight size={18} />

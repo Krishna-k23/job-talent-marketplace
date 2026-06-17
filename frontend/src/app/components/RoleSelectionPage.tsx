@@ -33,7 +33,7 @@ export function RoleSelectionPage({ onSelectRole }: RoleSelectionPageProps) {
               <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span className="text-xl font-bold text-slate-800 dark:text-slate-100">BenchBridge</span>
+          <span className="text-xl font-bold text-slate-800 dark:text-slate-100">BenchAstra</span>
         </div>
         <ThemeToggle />
       </header>
@@ -44,7 +44,7 @@ export function RoleSelectionPage({ onSelectRole }: RoleSelectionPageProps) {
         {/* Heading */}
         <div className="text-center mb-10 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-3">
-            Welcome to BenchBridge!
+            Welcome to BenchAstra!
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg">
             Choose how you want to use the platform
@@ -84,7 +84,7 @@ export function RoleSelectionPage({ onSelectRole }: RoleSelectionPageProps) {
             {/* CTA Button */}
             <button
               onClick={() => onSelectRole('vendor')}
-              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 hover:shadow-green-600/30 hover:scale-[1.02]"
+              className="w-full py-3 cursor-pointer bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 hover:shadow-green-600/30 hover:scale-[1.02]"
             >
               Continue as Vendor
               <ArrowRight size={18} />
@@ -121,7 +121,7 @@ export function RoleSelectionPage({ onSelectRole }: RoleSelectionPageProps) {
             {/* CTA Button */}
             <button
               onClick={() => onSelectRole('client')}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 hover:scale-[1.02]"
+              className="w-full py-3 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 hover:scale-[1.02]"
             >
               Continue as Client
               <ArrowRight size={18} />

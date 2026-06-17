@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
+from pydantic import BaseModel
 from app.database import get_db
 from app.models import User, Contract, Requirement, Resource
 from app.schemas import ContractCreate, ContractResponse, ContractStatus
@@ -9,6 +10,13 @@ from app.dependencies import get_current_user
 from app.utils.helpers import generate_contract_id
 
 router = APIRouter(prefix="/contracts", tags=["Contracts"])
+
+# Add this schema for contract update
+class ContractUpdate(BaseModel):
+    status: Optional[ContractStatus] = None
+    rate: Optional[float] = None
+    billing_cycle: Optional[str] = None
+    description: Optional[str] = None
 
 @router.get("/", response_model=List[ContractResponse])
 def get_contracts(
@@ -59,6 +67,45 @@ def get_contracts(
         ))
     
     return result
+
+@router.get("/{contract_id}", response_model=ContractResponse)
+def get_contract(
+    contract_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    # Check authorization
+    if contract.client_id != current_user.id and contract.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this contract")
+    
+    client = db.query(User).filter(User.id == contract.client_id).first()
+    vendor = db.query(User).filter(User.id == contract.vendor_id).first()
+    requirement = db.query(Requirement).filter(Requirement.id == contract.requirement_id).first()
+    resource = db.query(Resource).filter(Resource.id == contract.resource_id).first()
+    
+    return ContractResponse(
+        id=contract.id,
+        contract_id=contract.contract_id,
+        client_id=contract.client_id,
+        vendor_id=contract.vendor_id,
+        requirement_id=contract.requirement_id,
+        resource_id=contract.resource_id,
+        rate=contract.rate,
+        billing_cycle=contract.billing_cycle,
+        start_date=contract.start_date,
+        end_date=contract.end_date,
+        description=contract.description,
+        status=contract.status,
+        created_at=contract.created_at,
+        client_name=(client.full_name or client.email) if client else None,
+        vendor_name=(vendor.vendor_name or vendor.full_name or vendor.email) if vendor else None,
+        requirement_role=requirement.role if requirement else None,
+        resource_name=resource.name if resource else None
+    )
 
 @router.post("/", response_model=ContractResponse)
 def create_contract(
@@ -128,6 +175,56 @@ def create_contract(
         resource_name=resource.name
     )
 
+@router.put("/{contract_id}", response_model=ContractResponse)
+def update_contract(
+    contract_id: int,
+    contract_update: ContractUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    # Check authorization
+    if contract.client_id != current_user.id and contract.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this contract")
+    
+    # Update fields
+    update_data = contract_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(contract, field, value)
+    
+    db.commit()
+    db.refresh(contract)
+    
+    # Get related data for response
+    client = db.query(User).filter(User.id == contract.client_id).first()
+    vendor = db.query(User).filter(User.id == contract.vendor_id).first()
+    requirement = db.query(Requirement).filter(Requirement.id == contract.requirement_id).first()
+    resource = db.query(Resource).filter(Resource.id == contract.resource_id).first()
+    
+    return ContractResponse(
+        id=contract.id,
+        contract_id=contract.contract_id,
+        client_id=contract.client_id,
+        vendor_id=contract.vendor_id,
+        requirement_id=contract.requirement_id,
+        resource_id=contract.resource_id,
+        rate=contract.rate,
+        billing_cycle=contract.billing_cycle,
+        start_date=contract.start_date,
+        end_date=contract.end_date,
+        description=contract.description,
+        status=contract.status,
+        created_at=contract.created_at,
+        client_name=(client.full_name or client.email) if client else None,
+        vendor_name=(vendor.vendor_name or vendor.full_name or vendor.email) if vendor else None,
+        requirement_role=requirement.role if requirement else None,
+        resource_name=resource.name if resource else None
+    )
+
 @router.put("/{contract_id}/status")
 def update_contract_status(
     contract_id: int,
@@ -147,3 +244,21 @@ def update_contract_status(
     db.commit()
     
     return {"message": f"Contract status updated to {status.value}"}
+
+@router.delete("/{contract_id}")
+def delete_contract(
+    contract_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    if contract.client_id != current_user.id and contract.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this contract")
+    
+    db.delete(contract)
+    db.commit()
+    
+    return {"message": "Contract deleted successfully"}

@@ -51,7 +51,7 @@ export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalPr
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-secondary rounded-lg transition-all duration-200 text-muted-foreground hover:text-foreground"
+            className="p-2 cursor-pointer hover:bg-secondary rounded-lg transition-all duration-200 text-muted-foreground hover:text-foreground"
           >
             <X size={20} />
           </button>
@@ -137,11 +137,11 @@ export function ResourceDetailModal({ resource, onClose }: ResourceDetailModalPr
         <div className="flex-shrink-0 bg-card dark:bg-card border-t border-border p-4 sm:p-6 flex items-center gap-3 rounded-b-2xl">
           <button
             onClick={onClose}
-            className="flex-1 h-11 px-6 text-sm font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-secondary transition-all"
+            className="flex-1 cursor-pointer h-11 px-6 text-sm font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-secondary transition-all"
           >
             Close
           </button>
-          <button className="flex-1 h-11 px-6 text-sm font-medium bg-primary hover:bg-primary-hover text-white rounded-lg transition-all shadow-lg shadow-primary/25">
+          <button className="flex-1 cursor-pointer h-11 px-6 text-sm font-medium bg-primary hover:bg-primary-hover text-white rounded-lg transition-all shadow-lg shadow-primary/25">
             Contact Resource
           </button>
         </div>

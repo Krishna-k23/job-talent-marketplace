@@ -11,25 +11,59 @@ interface Message {
 
 interface ChatbotProps {
   isLoggedIn?: boolean;
+  onLoginClick?: () => void;
+  onSignupClick?: () => void;
+  userRole?: 'client' | 'vendor' | null; // Add userRole prop
 }
 
-export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
+export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userRole = null }: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: isLoggedIn
-        ? 'Hello! How can I assist you with your portal today?'
-        : 'Hello! How can I help you today?',
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Reset chat when opened - always show fresh state
+  useEffect(() => {
+    if (isOpen) {
+      resetChat();
+    }
+  }, [isOpen]);
+
+  // Reset chat to initial state
+  const resetChat = () => {
+    setShowQuickActions(true);
+    setIsTyping(false);
+    setInputValue('');
+    setMessages([
+      {
+        id: 1,
+        text: isLoggedIn
+          ? 'Hello! How can I assist you with your portal today?'
+          : 'Hello! How can I help you today?',
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
+  // Clear all chat history
+  const clearChat = () => {
+    setMessages([
+      {
+        id: Date.now(),
+        text: isLoggedIn
+          ? 'Chat cleared! How can I assist you?'
+          : 'Chat cleared! How can I help you today?',
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ]);
+    setShowQuickActions(true);
+    setInputValue('');
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -46,6 +80,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: LogIn,
       message: 'I need help signing in',
       color: 'from-blue-500 to-blue-600',
+      action: 'login',
     },
     {
       id: 'signup',
@@ -53,6 +88,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: UserPlus,
       message: 'I want to sign up for an account',
       color: 'from-green-500 to-green-600',
+      action: 'signup',
     },
     {
       id: 'help',
@@ -60,6 +96,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: HelpCircle,
       message: 'I need quick assistance',
       color: 'from-purple-500 to-purple-600',
+      action: 'help',
     },
     {
       id: 'contact',
@@ -67,17 +104,19 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: Phone,
       message: 'I want to connect with support',
       color: 'from-orange-500 to-orange-600',
+      action: 'contact',
     },
   ];
 
-  // Quick Actions for logged in users
-  const userQuickActions = [
+  // Client-specific quick actions (no contracts)
+  const clientQuickActions = [
     {
       id: 'requirements',
       label: 'Requirements',
       icon: FileText,
       message: 'I need help with requirements',
       color: 'from-blue-500 to-blue-600',
+      action: 'requirements',
     },
     {
       id: 'resources',
@@ -85,13 +124,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: Users,
       message: 'I have questions about resources',
       color: 'from-green-500 to-green-600',
-    },
-    {
-      id: 'contracts',
-      label: 'Contracts',
-      icon: Briefcase,
-      message: 'I need assistance with contracts',
-      color: 'from-purple-500 to-purple-600',
+      action: 'resources',
     },
     {
       id: 'billing',
@@ -99,6 +132,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: DollarSign,
       message: 'I have a billing question',
       color: 'from-orange-500 to-orange-600',
+      action: 'billing',
     },
     {
       id: 'settings',
@@ -106,6 +140,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: Settings,
       message: 'Help me with account settings',
       color: 'from-pink-500 to-pink-600',
+      action: 'settings',
     },
     {
       id: 'support',
@@ -113,12 +148,96 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       icon: Headphones,
       message: 'I need technical support',
       color: 'from-cyan-500 to-cyan-600',
+      action: 'support',
     },
   ];
 
-  const quickActions = isLoggedIn ? userQuickActions : guestQuickActions;
+  // Vendor-specific quick actions (includes contracts)
+  const vendorQuickActions = [
+    {
+      id: 'requirements',
+      label: 'Requirements',
+      icon: FileText,
+      message: 'I need help with requirements',
+      color: 'from-blue-500 to-blue-600',
+      action: 'requirements',
+    },
+    {
+      id: 'resources',
+      label: 'Resources',
+      icon: Users,
+      message: 'I have questions about resources',
+      color: 'from-green-500 to-green-600',
+      action: 'resources',
+    },
+    {
+      id: 'contracts',
+      label: 'Contracts',
+      icon: Briefcase,
+      message: 'I need assistance with contracts',
+      color: 'from-purple-500 to-purple-600',
+      action: 'contracts',
+    },
+    {
+      id: 'billing',
+      label: 'Billing',
+      icon: DollarSign,
+      message: 'I have a billing question',
+      color: 'from-orange-500 to-orange-600',
+      action: 'billing',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      message: 'Help me with account settings',
+      color: 'from-pink-500 to-pink-600',
+      action: 'settings',
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: Headphones,
+      message: 'I need technical support',
+      color: 'from-cyan-500 to-cyan-600',
+      action: 'support',
+    },
+  ];
+
+  // Determine which quick actions to show based on user role
+  const getQuickActions = () => {
+    if (!isLoggedIn) return guestQuickActions;
+    
+    // If user is vendor, show vendor actions (includes contracts)
+    if (userRole === 'vendor') return vendorQuickActions;
+    
+    // If user is client or any other role, show client actions (no contracts)
+    return clientQuickActions;
+  };
+
+  const quickActions = getQuickActions();
 
   const handleQuickAction = (action: typeof quickActions[0]) => {
+    // Handle navigation actions for non-logged in users
+    if (!isLoggedIn) {
+      if (action.id === 'signin') {
+        setIsOpen(false);
+        if (onLoginClick) {
+          onLoginClick();
+        }
+        return;
+      }
+      
+      if (action.id === 'signup') {
+        setIsOpen(false);
+        if (onSignupClick) {
+          onSignupClick();
+        }
+        return;
+      }
+    }
+
+    // For other actions, show bot response
     const userMessage: Message = {
       id: messages.length + 1,
       text: action.message,
@@ -145,23 +264,36 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
 
   const getBotResponse = (actionId: string): string => {
     const guestResponses: Record<string, string> = {
-      signup: "Great! To sign up, click the 'Sign Up' button on the top right of the homepage. You'll need to provide your email and create a password.",
-      signin: "To sign in, click the 'Sign In' button on the homepage. If you've forgotten your password, use the 'Forgot Password' link.",
+      signup: "Great! You'll be redirected to the signup page to create your account.",
+      signin: "You'll be redirected to the login page to access your account.",
       help: 'I can help you with account setup, navigation, posting requirements, or finding resources. What do you need help with?',
       contact: 'You can reach our support team at support@benchbridge.com or call us at +91-80-1234-5678 during business hours (9 AM - 6 PM IST).',
     };
 
-    const userResponses: Record<string, string> = {
+    const clientResponses: Record<string, string> = {
       requirements: "I can help you with posting requirements, editing existing ones, viewing matches, or managing your job requirements. Navigate to the Requirements section from the sidebar.",
       resources: "For resources, you can search available talent, view profiles, check availability, and manage resource allocations. Visit the Resources section for more details.",
-      contracts: "Need help with contracts? You can view active contracts, check contract details, monitor duration and billing, or download contract documents from the Contracts page.",
       billing: "For billing inquiries, you can view your current plan, check payment history, update payment methods, or download invoices from the Billing section.",
       settings: "In Settings, you can update your profile information, change password, manage notification preferences, or configure account settings.",
       support: "Our technical support team is here to help! You can reach us at support@benchbridge.com or call +91-80-1234-5678 (9 AM - 6 PM IST). We typically respond within 2-4 hours.",
     };
 
-    const responses = isLoggedIn ? userResponses : guestResponses;
-    return responses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
+    const vendorResponses: Record<string, string> = {
+      requirements: "I can help you with viewing job requirements, tracking submissions, and understanding client needs. Check the Requirements section for available opportunities.",
+      resources: "For resources, you can add new talent, manage existing profiles, update availability, and track resource performance from the Resources section.",
+      contracts: "Need help with contracts? You can view active contracts, track billing cycles, check contract details, and manage your vendor agreements from the Contracts page.",
+      billing: "For billing inquiries, you can view your current plan, check payment history, update payment methods, or download invoices from the Billing section.",
+      settings: "In Settings, you can update your profile information, change password, manage notification preferences, or configure account settings.",
+      support: "Our technical support team is here to help! You can reach us at support@benchbridge.com or call +91-80-1234-5678 (9 AM - 6 PM IST). We typically respond within 2-4 hours.",
+    };
+
+    if (!isLoggedIn) return guestResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
+    
+    if (userRole === 'vendor') {
+      return vendorResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
+    }
+    
+    return clientResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
   };
 
   const handleSendMessage = async () => {
@@ -206,7 +338,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-full shadow-2xl shadow-blue-600/40 hover:shadow-blue-700/50 hover:scale-110 transition-all duration-300 z-40 flex items-center justify-center group"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-full shadow-2xl shadow-blue-600/40 hover:shadow-blue-700/50 hover:scale-110 transition-all duration-300 z-40 flex items-center justify-center group cursor-pointer"
           aria-label="Open chat"
         >
           <MessageCircle size={24} strokeWidth={2.5} className="group-hover:scale-110 transition-transform duration-300" />
@@ -239,15 +371,30 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Chat Assistant</h3>
-                  <p className="text-xs text-blue-100">How can I help you?</p>
+                  <p className="text-xs text-blue-100">
+                    {isLoggedIn && userRole === 'vendor' 
+                      ? 'Vendor Support' 
+                      : isLoggedIn && userRole === 'client' 
+                      ? 'Client Support' 
+                      : 'How can I help you?'}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-white" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Clear Chat Button - Text version */}
+                <button
+                  onClick={clearChat}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors cursor-pointer text-white text-sm font-medium"
+                >
+                  Clear Chat
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X size={20} className="text-white" />
+                </button>
+              </div>
             </div>
 
             {/* Messages Area */}
@@ -308,12 +455,12 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
 
               {/* Quick Actions */}
               {showQuickActions && (
-                <div className={`grid ${isLoggedIn ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-4`}>
+                <div className={`grid ${isLoggedIn ? (userRole === 'vendor' ? 'grid-cols-3' : 'grid-cols-3') : 'grid-cols-2'} gap-3 pt-4`}>
                   {quickActions.map((action) => (
                     <button
                       key={action.id}
                       onClick={() => handleQuickAction(action)}
-                      className={`p-4 bg-gradient-to-br ${action.color} text-white rounded-xl hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95`}
+                      className={`p-4 bg-gradient-to-br ${action.color} text-white rounded-xl hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 cursor-pointer`}
                     >
                       <action.icon size={isLoggedIn ? 20 : 24} className="mx-auto mb-2" />
                       <p className={`${isLoggedIn ? 'text-xs' : 'text-sm'} font-semibold`}>{action.label}</p>
@@ -338,7 +485,7 @@ export function Chatbot({ isLoggedIn = false }: ChatbotProps) {
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim()}
-                  className="w-11 h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed active:scale-95"
+                  className="w-11 h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed active:scale-95 cursor-pointer"
                 >
                   <Send size={18} />
                 </button>

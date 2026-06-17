@@ -27,7 +27,7 @@ export function DeleteConfirmationModal({
             </div>
             <button
               onClick={onCancel}
-              className="p-1 hover:bg-secondary rounded-lg transition-all"
+              className="p-1 hover:bg-secondary rounded-lg transition-all cursor-pointer"
             >
               <X size={20} className="text-muted-foreground" />
             </button>
@@ -37,13 +37,13 @@ export function DeleteConfirmationModal({
         <div className="flex items-center gap-3 px-6 pb-6">
           <button
             onClick={onCancel}
-            className="flex-1 h-11 px-4 border-2 border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-all"
+            className="flex-1 h-11 px-4 border-2 border-border cursor-pointer text-foreground font-medium rounded-xl hover:bg-secondary transition-all"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-11 px-4 bg-destructive hover:bg-red-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-red-500/25"
+            className="flex-1 h-11 px-4 cursor-pointer bg-destructive hover:bg-red-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-red-500/25"
           >
             Delete
           </button>

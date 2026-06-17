@@ -1,9 +1,9 @@
 ```markdown
-# BenchBridge - Job Talent Marketplace
+# BenchAstra - Job Talent Marketplace
 
 ## 📋 Overview
 
-BenchBridge is a comprehensive job talent marketplace platform that connects clients (employers) with vendors (talent providers). The platform features AI-powered matching, resource management, contract management, and real-time analytics.
+BenchAstra is a comprehensive job talent marketplace platform that connects clients (employers) with vendors (talent providers). The platform features AI-powered matching, resource management, contract management, and real-time analytics.
 
 ## 🚀 Features
 
@@ -138,11 +138,11 @@ After setting up the database, you can use these test accounts:
 
 ### Client Account
 - Email: `client@test.com`
-- Password: `BenchBridge@2025`
+- Password: `BenchAstra@2025`
 
 ### Vendor Account
 - Email: `vendor@test.com`
-- Password: `BenchBridge@2025`
+- Password: `BenchAstra@2025`
 
 > **Note**: OTP verification uses static code `123456` for testing purposes.
 

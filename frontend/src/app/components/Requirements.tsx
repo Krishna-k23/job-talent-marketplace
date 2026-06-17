@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Eye, Edit2, Trash2, Download, Upload, Plus, Search } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Eye, Edit2, Trash2, Download, Upload, Plus, Search, CheckSquare, Square, Trash, Loader2 } from 'lucide-react';
 import { RequirementDetailModal } from './RequirementDetailModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { Pagination } from './Pagination';
@@ -46,6 +46,81 @@ function formatBudget(min?: number, max?: number): string {
   return 'N/A';
 }
 
+// Token refresh function
+const refreshToken = async (): Promise<boolean> => {
+  try {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) return false;
+    
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return false;
+  }
+};
+
+// API call with token refresh
+const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  let token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  
+  if (!token) {
+    window.location.href = '/login';
+    throw new Error('No token found');
+  }
+  
+  const makeRequest = async (retryToken?: string) => {
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${retryToken || token}`
+    };
+    
+    // Don't set Content-Type for FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...(options.headers || {})
+      }
+    });
+    
+    return response;
+  };
+  
+  let response = await makeRequest();
+  
+  if (response.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      const newToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+      response = await makeRequest(newToken);
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+  }
+  
+  return response;
+};
+
 export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) {
   const { showSuccess, showError } = useToast();
   const [selectedRequirement, setSelectedRequirement] = useState<ApiRequirement | null>(null);
@@ -55,28 +130,33 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
     id: 0,
     label: '',
   });
+  const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState<{ show: boolean; count: number }>({
+    show: false,
+    count: 0,
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const itemsPerPage = 10;
 
   const fetchRequirements = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const params = new URLSearchParams({ limit: '100' });
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
-      const response = await fetch(`/api/requirements/?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetchWithAuth(`/api/requirements/?${params.toString()}`);
 
       if (response.ok) {
         const data = await response.json();
         setRequirements(Array.isArray(data) ? data : []);
+        // Clear selections when data changes
+        setSelectedIds(new Set());
       } else {
         console.error('Failed to fetch requirements:', response.status);
         setRequirements([]);
@@ -93,17 +173,65 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
     fetchRequirements();
   }, [statusFilter]);
 
+  // Handle view matches - Use the numeric ID from the requirement
+  const handleViewMatches = async (requirement: ApiRequirement) => {
+    try {
+      // Use the numeric ID (database ID) for the matches endpoint
+      const endpoint = `/api/requirements/${requirement.id}/matches`;
+      
+      const response = await fetchWithAuth(endpoint);
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Pass the requirement_id (string) and match count to the parent
+        onViewMatches?.(requirement.requirement_id, data.length || requirement.matches_count || 0);
+      } else if (response.status === 404) {
+        // No matches found
+        onViewMatches?.(requirement.requirement_id, 0);
+        showError('No matches found for this requirement.');
+      } else {
+        // Fallback: use the stored matches count
+        onViewMatches?.(requirement.requirement_id, requirement.matches_count || 0);
+        showError('Could not fetch matches. Showing cached count.');
+      }
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+      onViewMatches?.(requirement.requirement_id, requirement.matches_count || 0);
+    }
+  };
+
   const confirmDelete = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-      await fetch(`/api/requirements/${deleteConfirmation.id}`, {
+      await fetchWithAuth(`/api/requirements/${deleteConfirmation.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
       setDeleteConfirmation({ show: false, id: 0, label: '' });
       fetchRequirements();
+      showSuccess('Requirement deleted successfully');
     } catch (error) {
       console.error('Error deleting requirement:', error);
+      showError('Failed to delete requirement');
+    }
+  };
+
+  // Bulk delete selected requirements
+  const confirmBulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedIds);
+      const promises = ids.map(id => 
+        fetchWithAuth(`/api/requirements/${id}`, {
+          method: 'DELETE',
+        })
+      );
+      
+      await Promise.all(promises);
+      setBulkDeleteConfirmation({ show: false, count: 0 });
+      setSelectedIds(new Set());
+      fetchRequirements();
+      showSuccess(`Successfully deleted ${ids.length} requirements`);
+    } catch (error) {
+      console.error('Error deleting requirements:', error);
+      showError('Failed to delete some requirements');
     }
   };
 
@@ -125,11 +253,49 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
     setDeleteConfirmation({ show: false, id: 0, label: '' });
   };
 
-  // BULK UPLOAD FUNCTIONS - ADD THIS HERE
+  const cancelBulkDelete = () => {
+    setBulkDeleteConfirmation({ show: false, count: 0 });
+  };
+
+  // Filtered requirements - defined once with useMemo
+  const filteredRequirements = useMemo(() => {
+    return requirements.filter((req) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        (req.requirement_id || '').toLowerCase().includes(q) ||
+        (req.role || '').toLowerCase().includes(q)
+      );
+    });
+  }, [requirements, searchQuery]);
+
+  // Selection handlers
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredRequirements.length) {
+      setSelectedIds(new Set());
+    } else {
+      const allIds = new Set(filteredRequirements.map(r => r.id));
+      setSelectedIds(allIds);
+    }
+  };
+
+  const isAllSelected = filteredRequirements.length > 0 && selectedIds.size === filteredRequirements.length;
+
+  // BULK UPLOAD FUNCTIONS
   const handleBulkUpload = async (file: File) => {
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) {
-      showError('Please login first');  // REPLACE alert
+      showError('Please login first');
       return;
     }
 
@@ -139,16 +305,17 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       'text/csv'
     ];
 
-    if (!validTypes.includes(file.type)) {
-      showError('Please upload an Excel file (.xlsx, .xls) or CSV file');  // REPLACE alert
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      showError('Please upload an Excel file (.xlsx, .xls) or CSV file');
       return;
     }
 
+    setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/requirements/bulk-upload', {
+      let response = await fetch('/api/requirements/bulk-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -156,21 +323,44 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
         body: formData
       });
 
+      if (response.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const newToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+          response = await fetch('/api/requirements/bulk-upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+            },
+            body: formData
+          });
+        } else {
+          showError('Session expired. Please login again.');
+          window.location.href = '/login';
+          return;
+        }
+      }
+
       if (response.ok) {
         const result = await response.json();
-        showSuccess(`Successfully uploaded ${result.count || result.length || 0} requirements`);  // REPLACE alert
+        const count = result.count || result.length || result.uploaded_count || 0;
+        showSuccess(`Successfully uploaded ${count} requirements`);
         fetchRequirements();
       } else {
         const error = await response.json();
-        showError(error.detail || 'Failed to upload file');  // REPLACE alert
+        showError(error.detail || 'Failed to upload file. Please check the format.');
+        console.error('Upload error:', error);
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      showError('Error uploading file. Please try again.');  // REPLACE alert
+      showError('Error uploading file. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
   const triggerFileUpload = () => {
+    // Prevent multiple clicks
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.xlsx,.xls,.csv';
@@ -179,20 +369,61 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       if (file) {
         handleBulkUpload(file);
       }
+      // Reset the input
+      (e.target as HTMLInputElement).value = '';
     };
+    // Use a click handler that prevents duplicate triggers
     input.click();
   };
-  // END OF BULK UPLOAD FUNCTIONS
 
-  // Client-side search filter on top of server-side status filter
-  const filteredRequirements = requirements.filter((req) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (req.requirement_id || '').toLowerCase().includes(q) ||
-      (req.role || '').toLowerCase().includes(q)
-    );
-  });
+  // Download CSV Template with correct field names
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'role',
+      'experience_min',
+      'experience_max',
+      'positions',
+      'skills',
+      'budget_min',
+      'budget_max',
+      'duration',
+      'work_mode',
+      'start_date',
+      'location',
+      'description'
+    ];
+    
+    const sampleData = [
+      'DevOps Engineer',
+      '5',
+      '8',
+      '2',
+      'AWS,Docker,Kubernetes',
+      '100000',
+      '150000',
+      '12 Months',
+      'Hybrid',
+      'Immediate',
+      'Bangalore',
+      'Looking for experienced DevOps engineer'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      sampleData.join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'requirements_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    showSuccess('Template downloaded successfully!');
+  };
 
   const totalPages = Math.ceil(filteredRequirements.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -208,7 +439,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
         </div>
         <button
           onClick={onCreateNew}
-          className="px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-600/30 self-start sm:self-auto flex-shrink-0 text-sm sm:text-base"
+          className="px-5 py-2.5 sm:px-6 cursor-pointer sm:py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-600/30 self-start sm:self-auto flex-shrink-0 text-sm sm:text-base"
         >
           <Plus size={18} />
           Create New
@@ -232,9 +463,9 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setCurrentPage(1); }}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${statusFilter === s
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              className={`px-3 cursor-pointer sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${statusFilter === s
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                 }`}
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -246,21 +477,44 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       {/* Table */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
-            All Requirements ({filteredRequirements.length})
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
+              All Requirements ({filteredRequirements.length})
+            </h2>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={() => setBulkDeleteConfirmation({ show: true, count: selectedIds.size })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+              >
+                <Trash size={16} />
+                Delete Selected ({selectedIds.size})
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 flex items-center justify-center gap-2">
+            <button
+              onClick={handleDownloadTemplate}
+              className="flex-1 sm:flex-none cursor-pointer px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all duration-200 flex items-center justify-center gap-2"
+            >
               <Download size={15} />
-              <span className="hidden sm:inline">Download</span> CSV
+              <span className="hidden sm:inline">Download</span> Template
             </button>
-            {/* UPDATED BULK UPLOAD BUTTON WITH onClick */}
             <button
               onClick={triggerFileUpload}
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30"
+              disabled={uploading}
+              className="flex-1 cursor-pointer sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Upload size={15} />
-              Bulk Upload
+              {uploading ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={15} />
+                  Bulk Upload
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -278,6 +532,18 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
             <table className="w-full">
               <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                 <tr className="border-b-2 border-slate-200 dark:border-slate-700">
+                  <th className="px-4 py-4 text-left">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                    >
+                      {isAllSelected ? (
+                        <CheckSquare size={18} className="text-blue-600" />
+                      ) : (
+                        <Square size={18} className="text-slate-400" />
+                      )}
+                    </button>
+                  </th>
                   {['S.No', 'Job ID', 'Role', 'Experience', 'Budget', 'Status', 'Matching Profiles', 'Actions'].map((h) => (
                     <th
                       key={h}
@@ -292,16 +558,30 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                 {currentRequirements.map((req, index) => (
                   <tr
                     key={req.id}
-                    className="hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all duration-150 group"
+                    className={`hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all duration-150 group ${
+                      selectedIds.has(req.id) ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
+                    }`}
                   >
+                    <td className="px-4 py-5">
+                      <button
+                        onClick={() => toggleSelect(req.id)}
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                      >
+                        {selectedIds.has(req.id) ? (
+                          <CheckSquare size={18} className="text-blue-600" />
+                        ) : (
+                          <Square size={18} className="text-slate-400" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-300 font-medium">
                       {startIndex + index + 1}
                     </td>
                     <td className="px-6 py-5 text-sm font-bold text-blue-600 dark:text-blue-400">
-                      {req.requirement_id}
+                      {req.requirement_id || 'N/A'}
                     </td>
                     <td className="px-6 py-5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {req.role}
+                      {req.role || 'N/A'}
                     </td>
                     <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-400">
                       {formatExperience(req.experience_min, req.experience_max)}
@@ -311,18 +591,19 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                     </td>
                     <td className="px-6 py-5">
                       <span
-                        className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full border ${req.status === 'Open'
+                        className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                          req.status === 'Open'
                             ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
                             : 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
-                          }`}
+                        }`}
                       >
-                        {req.status}
+                        {req.status || 'Open'}
                       </span>
                     </td>
                     <td className="px-6 py-5">
                       <button
-                        onClick={() => onViewMatches?.(req.requirement_id, req.matches_count ?? 0)}
-                        className="inline-flex px-4 py-2 text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white rounded-full transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200 dark:border-blue-800"
+                        onClick={() => handleViewMatches(req)}
+                        className="inline-flex cursor-pointer px-4 py-2 text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white rounded-full transition-all duration-200 shadow-sm hover:shadow-md border border-blue-200 dark:border-blue-800"
                       >
                         View {req.matches_count ?? 0}
                       </button>
@@ -331,21 +612,21 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleView(req)}
-                          className="p-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 group-hover:scale-110"
+                          className="p-2.5 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 group-hover:scale-110"
                           title="View Details"
                         >
                           <Eye size={18} />
                         </button>
                         <button
                           onClick={() => handleEdit(req)}
-                          className="p-2.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 group-hover:scale-110"
+                          className="p-2.5 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 group-hover:scale-110"
                           title="Edit"
                         >
                           <Edit2 size={18} />
                         </button>
                         <button
                           onClick={() => handleDelete(req)}
-                          className="p-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 group-hover:scale-110"
+                          className="p-2.5 cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 group-hover:scale-110"
                           title="Delete"
                         >
                           <Trash2 size={18} />
@@ -373,6 +654,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
           requirement={selectedRequirement}
           mode={modalMode}
           onClose={() => setSelectedRequirement(null)}
+          onUpdate={fetchRequirements} 
         />
       )}
 
@@ -382,6 +664,15 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
           message={`Are you sure you want to delete requirement ${deleteConfirmation.label}? This action cannot be undone.`}
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
+        />
+      )}
+
+      {bulkDeleteConfirmation.show && (
+        <DeleteConfirmationModal
+          title="Delete Selected Requirements?"
+          message={`Are you sure you want to delete ${bulkDeleteConfirmation.count} selected requirement(s)? This action cannot be undone.`}
+          onConfirm={confirmBulkDelete}
+          onCancel={cancelBulkDelete}
         />
       )}
     </div>

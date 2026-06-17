@@ -119,7 +119,7 @@ export function Resources() {
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 ${
+                  className={`px-3 cursor-pointer sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 ${
                     filterStatus === status
                       ? 'bg-primary text-white shadow-md'
                       : 'bg-secondary dark:bg-slate-700 text-muted-foreground hover:bg-blue-50 dark:hover:bg-slate-600 hover:text-primary'
@@ -130,7 +130,7 @@ export function Resources() {
               ))}
             </div>
           </div>
-          <button className="self-start sm:self-auto px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-foreground flex-shrink-0">
+          <button className="self-start cursor-pointer sm:self-auto px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-2 border-border hover:border-primary/50 rounded-lg hover:bg-secondary dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-foreground flex-shrink-0">
             <Download size={16} />
             Export List
           </button>
@@ -210,11 +210,11 @@ export function Resources() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedResource(resource)}
-                className="flex-1 h-11 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
+                className="flex-1 h-11 cursor-pointer bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25"
               >
                 View Full Profile
               </button>
-              <button className="px-4 h-11 border-2 border-primary text-primary hover:bg-primary hover:text-white font-medium rounded-xl transition-all">
+              <button className="px-4 cursor-pointer h-11 border-2 border-primary text-primary hover:bg-primary hover:text-white font-medium rounded-xl transition-all">
                 <Star size={18} />
               </button>
             </div>

@@ -1,7 +1,7 @@
-// components/Header.tsx - Updated fetch calls
+// components/Header.tsx - Updated with green theme for vendor role and fixed company data
 import { useState, useEffect, useRef } from 'react';
 import React from 'react';
-import { ChevronDown, Settings, LogOut, Search, Menu, User, Mail, Phone, Building2, Camera, Trash2 } from 'lucide-react';
+import { ChevronDown, Settings, LogOut, Search, Menu, User, Mail, Phone, Building2, Camera, Trash2, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationPanel } from './NotificationPanel';
 import { useToast } from '../contexts/ToastContext';
@@ -33,6 +33,80 @@ export function Header({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Token refresh function
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return false;
+      
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  };
+
+  // API call with token refresh
+  const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    let token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    
+    if (!token) {
+      window.location.href = '/login';
+      throw new Error('No token found');
+    }
+    
+    const makeRequest = async (retryToken?: string) => {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${retryToken || token}`
+      };
+      
+      if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...headers,
+          ...(options.headers || {})
+        }
+      });
+      
+      return response;
+    };
+    
+    let response = await makeRequest();
+    
+    if (response.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        const newToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+        response = await makeRequest(newToken);
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+    }
+    
+    return response;
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,26 +137,25 @@ export function Header({
     }
 
     try {
-      const response = await fetch('/api/users/me', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await fetchWithAuth('/api/users/me');
+      
       if (response.ok) {
         const userData = await response.json();
+        console.log('User data from API:', userData); // Debug log
+        
         let displayName = userData.full_name;
         if (!displayName || displayName === '') {
           displayName = userData.email ? userData.email.split('@')[0] : 'User';
         }
 
+        // Get company name from nested company object or root level
+        const companyName = userData.company?.name || userData.company_name || '';
+
         setUser({
           name: displayName,
           email: userData.email || 'No email',
           phone: userData.phone || '',
-          company: userData.company_name || '',
+          company: companyName,
           role: userData.role || role || '',
           profile_picture: userData.profile_picture || '',
         });
@@ -136,23 +209,24 @@ export function Header({
     return 'U';
   };
 
+  // Updated: Green for vendor, Blue for client
   const getAvatarGradient = () => {
     if (userRole === 'vendor') {
-      return 'from-purple-600 to-pink-600';
+      return 'from-green-600 to-emerald-600';
     }
     return 'from-blue-600 to-cyan-600';
   };
 
   const getShadowColor = () => {
     if (userRole === 'vendor') {
-      return 'shadow-purple-500/30';
+      return 'shadow-green-500/30';
     }
     return 'shadow-blue-500/30';
   };
 
   const getRingColor = () => {
     if (userRole === 'vendor') {
-      return 'ring-purple-100 dark:ring-purple-900/50 group-hover:ring-purple-200';
+      return 'ring-green-100 dark:ring-green-900/50 group-hover:ring-green-200';
     }
     return 'ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200';
   };
@@ -162,12 +236,12 @@ export function Header({
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      showError('Image size should be less than 2MB');  // REPLACE alert
+      showError('Image size should be less than 2MB');
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      showError('Please upload an image file');  // REPLACE alert
+      showError('Please upload an image file');
       return;
     }
 
@@ -178,69 +252,54 @@ export function Header({
         const imageData = reader.result as string;
 
         const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-        const response = await fetch('/api/users/me/profile-picture', {
+        const response = await fetchWithAuth('/api/users/me/profile-picture', {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({ profile_picture: imageData }),
         });
 
         if (response.ok) {
           setProfileImage(imageData);
           setUser(prev => ({ ...prev, profile_picture: imageData }));
-          showSuccess('Profile picture updated successfully!');  // REPLACE alert
+          showSuccess('Profile picture updated successfully!');
         } else {
           const error = await response.json();
-          showError(error.detail || 'Failed to update profile picture');  // REPLACE alert
+          showError(error.detail || 'Failed to update profile picture');
         }
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error uploading image:', error);
-      showError('Error uploading image');  // REPLACE alert
+      showError('Error uploading image');
     } finally {
       setUploading(false);
     }
   };
 
   const handleRemoveProfilePicture = async () => {
-    if (!confirm('Are you sure you want to remove your profile picture?')) return;  // Keep this confirm
+    if (!confirm('Are you sure you want to remove your profile picture?')) return;
 
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     try {
-      const response = await fetch('/api/users/me/profile-picture', {
+      const response = await fetchWithAuth('/api/users/me/profile-picture', {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
       if (response.ok) {
         setProfileImage(null);
         setUser(prev => ({ ...prev, profile_picture: '' }));
-        showSuccess('Profile picture removed successfully!');  // REPLACE alert
+        showSuccess('Profile picture removed successfully!');
       } else {
-        showError('Failed to remove profile picture');  // REPLACE alert
+        showError('Failed to remove profile picture');
       }
     } catch (error) {
       console.error('Error removing profile picture:', error);
-      showError('Error removing profile picture');  // REPLACE alert
+      showError('Error removing profile picture');
     }
   };
 
   const handleUpdateProfile = async () => {
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-    if (!token) return;
-
     try {
-      const response = await fetch('/api/users/me', {
+      const response = await fetchWithAuth('/api/users/me', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           full_name: editingUser.name,
           phone: editingUser.phone,
@@ -250,14 +309,15 @@ export function Header({
       if (response.ok) {
         setUser(prev => ({ ...prev, name: editingUser.name, phone: editingUser.phone }));
         setShowSettingsModal(false);
-        showSuccess('Profile updated successfully!');  // REPLACE alert
+        showSuccess('Profile updated successfully!');
         fetchUser();
       } else {
-        showError('Failed to update profile');  // REPLACE alert
+        const error = await response.json();
+        showError(error.detail || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      showError('Error updating profile');  // REPLACE alert
+      showError('Error updating profile');
     }
   };
 
@@ -272,7 +332,7 @@ export function Header({
         {/* Mobile hamburger */}
         <button
           onClick={onMobileMenuToggle}
-          className="md:hidden p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors mr-2 flex-shrink-0"
+          className="md:hidden p-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors mr-2 flex-shrink-0"
           aria-label="Open menu"
         >
           <Menu size={22} className="text-slate-600 dark:text-slate-300" strokeWidth={2.5} />
@@ -281,12 +341,7 @@ export function Header({
         {/* Left Section - Search */}
         <div className="flex-1 max-w-xl">
           <div className="relative">
-            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={2.5} />
-            <input
-              type="text"
-              placeholder="Search anything..."
-              className="w-full h-10 md:h-12 pl-12 pr-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-400 transition-all"
-            />
+            {/* Search input is commented out */}
           </div>
         </div>
 
@@ -304,7 +359,7 @@ export function Header({
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-              className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3 py-2.5 transition-all duration-200 group"
+              className="flex items-center cursor-pointer gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3 py-2.5 transition-all duration-200 group"
             >
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getAvatarGradient()} flex items-center justify-center text-white font-semibold shadow-lg ${getShadowColor()} ring-2 ${getRingColor()} group-hover:ring-2 transition-all overflow-hidden`}>
                 {profileImage ? (
@@ -349,7 +404,7 @@ export function Header({
                 <div className="p-2">
                   <button
                     onClick={handleSettingsClickWrapper}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200"
+                    className="w-full cursor-pointer flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200"
                   >
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                       <Settings size={18} className="text-slate-600 dark:text-slate-300" strokeWidth={2.5} />
@@ -362,7 +417,7 @@ export function Header({
                       setShowProfileDropdown(false);
                       onLogout?.();
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all duration-200"
+                    className="w-full cursor-pointer flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all duration-200"
                   >
                     <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/30 flex items-center justify-center">
                       <LogOut size={18} className="text-red-600 dark:text-red-400" strokeWidth={2.5} />
@@ -379,7 +434,15 @@ export function Header({
       {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div ref={modalRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div ref={modalRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute top-4 right-4 p-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors z-10"
+              aria-label="Close settings"
+            >
+              <X size={20} className="text-slate-500 dark:text-slate-400" />
+            </button>
+
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Profile Settings</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Update your profile information</p>
@@ -403,7 +466,7 @@ export function Header({
                   {profileImage && (
                     <button
                       onClick={handleRemoveProfilePicture}
-                      className="absolute bottom-0 left-0 p-1.5 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 transition-colors"
+                      className="absolute bottom-0 left-0 p-1.5 bg-red-600 rounded-full hover:bg-red-700 transition-colors"
                     >
                       <Trash2 size={14} className="text-white" />
                     </button>
@@ -454,24 +517,25 @@ export function Header({
                 />
               </div>
 
-              {/* Company/Organization */}
+              {/* Company/Organization - Fixed to show correct data */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   <Building2 size={14} className="inline mr-1" /> Organization
                 </label>
                 <input
                   type="text"
-                  value={user.company}
+                  value={user.company || 'Not specified'}
                   disabled
                   className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 dark:text-slate-400 cursor-not-allowed"
                 />
+                <p className="text-xs text-slate-500 mt-1">Organization name from your profile</p>
               </div>
 
               {/* Role */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
                 <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${userRole === 'vendor'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                   }`}>
                   {userRole === 'vendor' ? 'Vendor' : 'Client'}
@@ -482,13 +546,13 @@ export function Header({
             <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-3">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1 cursor-pointer px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdateProfile}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                className="flex-1 cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
               >
                 Save Changes
               </button>

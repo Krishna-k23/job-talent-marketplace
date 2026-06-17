@@ -32,14 +32,14 @@ def send_otp_email(email: str, otp: str, purpose: str = "verification") -> bool:
         return True
 
     try:
-        subject = f"BenchBridge – Your {label} OTP"
+        subject = f"BenchAstra – Your {label} OTP"
         body = f"""\
 <!DOCTYPE html>
 <html>
 <body style="font-family:sans-serif;background:#f8fafc;padding:32px;">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;
               padding:32px;border:1px solid #e2e8f0;">
-    <h2 style="color:#1e293b;margin-top:0;">Your BenchBridge OTP</h2>
+    <h2 style="color:#1e293b;margin-top:0;">Your BenchAstra OTP</h2>
     <p style="color:#475569;">Use the code below to complete your {purpose}:</p>
     <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;
                 margin:24px 0;">
@@ -56,7 +56,7 @@ def send_otp_email(email: str, otp: str, purpose: str = "verification") -> bool:
 </html>"""
 
         msg = MIMEMultipart("alternative")
-        msg["From"] = f"BenchBridge <{settings.SMTP_USER}>"
+        msg["From"] = f"BenchAstra <{settings.SMTP_USER}>"
         msg["To"] = email
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "html"))

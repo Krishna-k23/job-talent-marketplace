@@ -69,7 +69,7 @@ export function Toast({ id, message, type, onClose, duration = 3000 }: ToastProp
       <span className={`text-sm font-medium ${getTextColor()}`}>{message}</span>
       <button
         onClick={() => onClose(id)}
-        className="ml-auto hover:opacity-70 transition-opacity"
+        className="ml-auto cursor-pointer hover:opacity-70 transition-opacity"
       >
         <X size={16} className="text-gray-500" />
       </button>

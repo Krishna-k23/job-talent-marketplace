@@ -21,7 +21,7 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
                 <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <span className="text-2xl font-bold text-foreground">BenchBridge</span>
+            <span className="text-2xl font-bold text-foreground">BenchAstra</span>
           </div>
 
           {/* Navigation */}
@@ -42,7 +42,7 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
             <ThemeToggle />
             <button
               onClick={onLoginClick}
-              className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-blue-600/25"
+              className="px-6 py-2.5 bg-primary v hover:bg-primary-hover text-white font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-blue-600/25"
             >
               Login
             </button>
@@ -102,14 +102,14 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
             <div className="flex flex-wrap items-center gap-4 pt-4">
               <button
                 onClick={onGetStartedClick}
-                className="px-8 py-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-xl shadow-blue-600/30 flex items-center gap-2"
+                className="px-8 cursor-pointer py-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-all duration-200 shadow-xl shadow-blue-600/30 flex items-center gap-2"
               >
                 <span>Get Started Free</span>
                 <ArrowRight size={20} />
               </button>
               <button
                 onClick={onLoginClick}
-                className="px-8 py-4 bg-secondary hover:bg-accent text-foreground font-semibold rounded-xl transition-all duration-200 border border-border"
+                className="px-8 cursor-pointer py-4 bg-secondary hover:bg-accent text-foreground font-semibold rounded-xl transition-all duration-200 border border-border"
               >
                 Sign In
               </button>
@@ -298,19 +298,19 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
               Ready to Transform Your Hiring?
             </h2>
             <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-              Join hundreds of companies already using BenchBridge to streamline their recruitment process
+              Join hundreds of companies already using BenchAstra to streamline their recruitment process
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <button
                 onClick={onGetStartedClick}
-                className="px-10 py-4 bg-white text-primary hover:bg-gray-100 font-semibold rounded-xl transition-all duration-200 shadow-2xl flex items-center gap-2"
+                className="px-10 cursor-pointer py-4 bg-white text-primary hover:bg-gray-100 font-semibold rounded-xl transition-all duration-200 shadow-2xl flex items-center gap-2"
               >
                 <span>Start Free Trial</span>
                 <ArrowRight size={20} />
               </button>
               <button
                 onClick={onLoginClick}
-                className="px-10 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20"
+                className="px-10 cursor-pointer py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20"
               >
                 Sign In Now
               </button>
@@ -332,7 +332,7 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
                     <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <span className="text-2xl font-bold text-foreground">BenchBridge</span>
+                <span className="text-2xl font-bold text-foreground">BenchAstra</span>
               </div>
               <p className="text-muted-foreground mb-4 max-w-sm">
                 The modern recruitment platform connecting clients and vendors for seamless hiring.
@@ -359,7 +359,7 @@ export function LandingPage({ onLoginClick, onGetStartedClick }: LandingPageProp
           </div>
 
           <div className="pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 BenchBridge. All rights reserved.</p>
+            <p>&copy; 2026 BenchAstra. All rights reserved.</p>
           </div>
         </div>
       </footer>

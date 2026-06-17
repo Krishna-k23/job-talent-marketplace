@@ -66,7 +66,7 @@ const LoginForm = memo(({
     <div className="w-full max-w-[420px] flex flex-col gap-3">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-[12.5px] font-medium w-fit transition-opacity hover:opacity-70 touch-manipulation"
+        className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-medium w-fit transition-opacity hover:opacity-70 touch-manipulation"
         style={{ color: 'rgba(255,255,255,0.85)' }}
       >
         <ArrowLeft size={15} />
@@ -184,7 +184,7 @@ const LoginForm = memo(({
               <button
                 type="button"
                 onClick={onForgotPassword}
-                className="text-[12px] font-semibold transition-opacity hover:opacity-70 touch-manipulation"
+                className="text-[12px] cursor-pointer font-semibold transition-opacity hover:opacity-70 touch-manipulation"
                 style={{ color: accentBtn }}
               >
                 Forgot password?
@@ -194,7 +194,7 @@ const LoginForm = memo(({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl border-none text-white text-[13.5px] font-bold flex items-center justify-center gap-2 transition-all duration-150 touch-manipulation"
+              className="w-full cursor-pointer py-3 rounded-xl border-none text-white text-[13.5px] font-bold flex items-center justify-center gap-2 transition-all duration-150 touch-manipulation"
               style={{
                 background: accentBtn,
                 boxShadow: accentShadow,
@@ -234,7 +234,7 @@ const LoginForm = memo(({
           Don't have an account?{' '}
           <button
             onClick={onSignup}
-            className="font-bold transition-opacity hover:opacity-70 touch-manipulation"
+            className="font-bold cursor-pointer transition-opacity hover:opacity-70 touch-manipulation"
             style={{ color: accentBtn }}
           >
             Sign up
@@ -386,7 +386,7 @@ export function RoleBasedLoginPage({
         <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span className="text-white font-bold text-[14px] tracking-tight">BenchBridge</span>
+      <span className="text-white font-bold text-[14px] tracking-tight">BenchAstra</span>
     </div>
   ), []);
 
@@ -439,7 +439,7 @@ export function RoleBasedLoginPage({
             Don't have an account?{' '}
             <button
               onClick={onSignup}
-              className="font-bold underline underline-offset-2 transition-opacity hover:opacity-80 touch-manipulation"
+              className="font-bold cursor-pointer underline underline-offset-2 transition-opacity hover:opacity-80 touch-manipulation"
               style={{ color: 'rgba(255,255,255,0.9)' }}
             >
               Sign up
@@ -543,7 +543,7 @@ function RoleCard({
       </div>
 
       <button
-        className="w-full py-3.5 flex items-center justify-center gap-2 text-white text-[13.5px] font-bold transition-colors duration-150 touch-manipulation"
+        className="w-full cursor-pointer py-3.5 flex items-center justify-center gap-2 text-white text-[13.5px] font-bold transition-colors duration-150 touch-manipulation"
         style={{ background: btnBg, borderRadius: '0 0 16px 16px', letterSpacing: '0.1px' }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = btnHover; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = btnBg; }}

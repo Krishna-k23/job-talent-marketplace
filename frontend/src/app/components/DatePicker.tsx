@@ -91,7 +91,7 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full h-11 px-4 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all flex items-center justify-between ${
+        className={`w-full h-11 px-4 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 cursor-pointer focus:ring-primary focus:border-transparent transition-all flex items-center justify-between ${
           disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
@@ -108,7 +108,7 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-2 hover:bg-secondary rounded-lg transition-all"
+              className="p-2 hover:bg-secondary rounded-lg transition-all cursor-pointer"
             >
               <ChevronLeft size={20} className="text-foreground" />
             </button>
@@ -118,7 +118,7 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-2 hover:bg-secondary rounded-lg transition-all"
+              className="p-2 hover:bg-secondary rounded-lg transition-all cursor-pointer"
             >
               <ChevronRight size={20} className="text-foreground" />
             </button>
@@ -141,7 +141,7 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
                   <button
                     type="button"
                     onClick={() => handleDateSelect(day)}
-                    className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                       isSelected(day)
                         ? 'bg-primary text-white shadow-lg shadow-blue-600/30'
                         : isToday(day)

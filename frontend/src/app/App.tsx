@@ -1,4 +1,4 @@
-// app.tsx (corrected version)
+// app.tsx (fixed with proper navigation and no blank tabs)
 import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -25,6 +25,7 @@ import { VendorResources } from './components/vendor/VendorResources';
 import { VendorContracts } from './components/vendor/VendorContracts';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Chatbot } from './components/Chatbot';
+import { apiPost, apiGet, isTokenExpired, getToken, clearAuthData } from '@/config/api';
 import '../styles/index.css';
 
 type AuthFlow = 'landing' | 'login' | 'signup' | 'forgot-password' | 'enter-otp' | 'reset-password' | 'password-reset-success';
@@ -49,46 +50,167 @@ function AppProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+// Helper functions for localStorage persistence
+const saveStateToLocalStorage = (state: NavState) => {
+  try {
+    localStorage.setItem('app_nav_state', JSON.stringify(state));
+  } catch (e) {
+    console.error('Failed to save state to localStorage:', e);
+  }
+};
+
+const loadStateFromLocalStorage = (): NavState | null => {
+  try {
+    const saved = localStorage.getItem('app_nav_state');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load state from localStorage:', e);
+  }
+  return null;
+};
+
+// Check if user is authenticated
+const isAuthenticated = (): boolean => {
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  return !!token;
+};
+
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authFlow, setAuthFlow] = useState<AuthFlow>('landing');
+  // Initialize state from localStorage on page load
+  const getInitialState = (): {
+    isLoggedIn: boolean;
+    authFlow: AuthFlow;
+    activePage: string;
+    currentVendorPage: 'dashboard' | 'resources' | 'contracts';
+    userRole: 'vendor' | 'client' | null;
+    showRoleSelection: boolean;
+    userEmail: string;
+  } => {
+    // Check token first
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    const savedState = loadStateFromLocalStorage();
+    const savedRole = localStorage.getItem('user_role') as 'vendor' | 'client' | null;
+
+    if (token && savedState && savedState.isLoggedIn) {
+      // User was logged in before refresh
+      return {
+        isLoggedIn: true,
+        authFlow: savedState.authFlow || 'landing',
+        activePage: savedState.activePage || 'dashboard',
+        currentVendorPage: savedState.currentVendorPage || 'dashboard',
+        userRole: savedState.userRole || savedRole,
+        showRoleSelection: savedState.showRoleSelection || false,
+        userEmail: localStorage.getItem('user_email') || '',
+      };
+    } else if (token) {
+      // Has token but no saved state - user was logged in
+      return {
+        isLoggedIn: true,
+        authFlow: 'landing',
+        activePage: 'dashboard',
+        currentVendorPage: 'dashboard',
+        userRole: savedRole,
+        showRoleSelection: !savedRole,
+        userEmail: localStorage.getItem('user_email') || '',
+      };
+    }
+
+    // Not logged in
+    if (savedState && !savedState.isLoggedIn) {
+      return {
+        isLoggedIn: false,
+        authFlow: savedState.authFlow || 'landing',
+        activePage: 'dashboard',
+        currentVendorPage: 'dashboard',
+        userRole: null,
+        showRoleSelection: false,
+        userEmail: '',
+      };
+    }
+
+    return {
+      isLoggedIn: false,
+      authFlow: 'landing',
+      activePage: 'dashboard',
+      currentVendorPage: 'dashboard',
+      userRole: null,
+      showRoleSelection: false,
+      userEmail: '',
+    };
+  };
+
+  const initialState = getInitialState();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(initialState.isLoggedIn);
+  const [authFlow, setAuthFlow] = useState<AuthFlow>(initialState.authFlow);
   const [resetEmail, setResetEmail] = useState('');
-  const [userRole, setUserRole] = useState<'vendor' | 'client' | null>(null);
-  const [showRoleSelection, setShowRoleSelection] = useState(false);
-  const [activePage, setActivePage] = useState('dashboard');
+  const [userRole, setUserRole] = useState<'vendor' | 'client' | null>(initialState.userRole);
+  const [showRoleSelection, setShowRoleSelection] = useState(initialState.showRoleSelection);
+  const [activePage, setActivePage] = useState(initialState.activePage);
   const [showPostRequirement, setShowPostRequirement] = useState(false);
   const [searchFilters, setSearchFilters] = useState<{ jobId?: string; matchCount?: number }>({});
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [currentVendorPage, setCurrentVendorPage] = useState<'dashboard' | 'resources' | 'contracts'>('dashboard');
+  const [currentVendorPage, setCurrentVendorPage] = useState<'dashboard' | 'resources' | 'contracts'>(initialState.currentVendorPage);
   const [vendorSidebarCollapsed, setVendorSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  const [userEmail, setUserEmail] = useState(initialState.userEmail);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const navRef = useRef<NavState>({
-    isLoggedIn: false,
-    authFlow: 'landing',
-    activePage: 'dashboard',
-    currentVendorPage: 'dashboard',
-    userRole: null,
-    showRoleSelection: false
+    isLoggedIn: initialState.isLoggedIn,
+    authFlow: initialState.authFlow,
+    activePage: initialState.activePage,
+    currentVendorPage: initialState.currentVendorPage,
+    userRole: initialState.userRole,
+    showRoleSelection: initialState.showRoleSelection
   });
 
+  // Update ref when state changes
   useEffect(() => {
     navRef.current = { isLoggedIn, authFlow, activePage, currentVendorPage, userRole, showRoleSelection };
+    saveStateToLocalStorage(navRef.current);
   }, [isLoggedIn, authFlow, activePage, currentVendorPage, userRole, showRoleSelection]);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
 
-  useEffect(() => {
-    window.history.replaceState(navRef.current, '');
-  }, []);
-
+  // Handle browser back/forward buttons
   useEffect(() => {
     const handlePop = (e: PopStateEvent) => {
-      if (!e.state) return;
-      const s = e.state as NavState;
+      if (isNavigating) return;
+
       const token = getToken();
-      const loggedIn = s.isLoggedIn && !!token;
+      const isAuth = !!token;
+
+      if (!isInitialized) return;
+
+      if (!e.state) {
+        if (isAuth) {
+          // Don't redirect, just prevent
+          return;
+        }
+        return;
+      }
+
+      const s = e.state as NavState;
+
+      // If authenticated and trying to go to auth pages, prevent it
+      if (isAuth && (s.authFlow === 'login' || s.authFlow === 'signup' || s.authFlow === 'landing' || s.authFlow === 'forgot-password')) {
+        // Don't do anything, just return
+        return;
+      }
+
+      // If authenticated and trying to go to role selection when role already selected
+      if (isAuth && s.showRoleSelection === true && userRole !== null) {
+        return;
+      }
+
+      // Update state from history
+      const loggedIn = s.isLoggedIn && isAuth;
       setIsLoggedIn(loggedIn);
       setAuthFlow(loggedIn ? (s.authFlow ?? 'landing') : 'landing');
       setActivePage(s.activePage ?? 'dashboard');
@@ -97,12 +219,67 @@ export default function App() {
       setShowRoleSelection(s.showRoleSelection ?? false);
       setIsMobileSidebarOpen(false);
     };
+
     window.addEventListener('popstate', handlePop);
     return () => window.removeEventListener('popstate', handlePop);
+  }, [userRole, isInitialized, isNavigating]);
+
+  // Initialize history on mount
+  useEffect(() => {
+    const token = getToken();
+    const isAuth = !!token;
+
+    if (isAuth && userRole) {
+      const currentState = {
+        isLoggedIn: true,
+        authFlow: 'landing',
+        activePage: activePage,
+        currentVendorPage: currentVendorPage,
+        userRole: userRole,
+        showRoleSelection: false
+      };
+      window.history.replaceState(currentState, '', window.location.href);
+    } else if (isAuth && showRoleSelection) {
+      const currentState = {
+        isLoggedIn: true,
+        authFlow: 'landing',
+        activePage: 'dashboard',
+        currentVendorPage: 'dashboard',
+        userRole: null,
+        showRoleSelection: true
+      };
+      window.history.replaceState(currentState, '', window.location.href);
+    } else if (!isAuth) {
+      const currentState = {
+        isLoggedIn: false,
+        authFlow: authFlow,
+        activePage: 'dashboard',
+        currentVendorPage: 'dashboard',
+        userRole: null,
+        showRoleSelection: false
+      };
+      window.history.replaceState(currentState, '', window.location.href);
+    }
+
+    setIsInitialized(true);
   }, []);
+
+  // Security: Check authentication
+  useEffect(() => {
+    if (isLoggedIn && !isAuthenticated()) {
+      handleLogout();
+    }
+  }, [isLoggedIn]);
 
   const navigate = (updates: Partial<NavState>) => {
     const next: NavState = { ...navRef.current, ...updates };
+
+    const token = getToken();
+    if (token && (next.authFlow === 'login' || next.authFlow === 'signup' || next.authFlow === 'landing')) {
+      return;
+    }
+
+    setIsNavigating(true);
     window.history.pushState(next, '');
     if (updates.isLoggedIn !== undefined) setIsLoggedIn(updates.isLoggedIn);
     if (updates.authFlow !== undefined) setAuthFlow(updates.authFlow);
@@ -110,63 +287,147 @@ export default function App() {
     if (updates.currentVendorPage !== undefined) setCurrentVendorPage(updates.currentVendorPage);
     if (updates.userRole !== undefined) setUserRole(updates.userRole);
     if (updates.showRoleSelection !== undefined) setShowRoleSelection(updates.showRoleSelection);
+
+    setTimeout(() => setIsNavigating(false), 100);
   };
+
+  // Add this helper function in App.tsx (around line 80)
+  const isTokenValid = (): boolean => {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (!token) return false;
+
+    try {
+      // Decode the JWT token to check expiry
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (exp) {
+        const now = Math.floor(Date.now() / 1000);
+        return now < exp;
+      }
+      return true; // If no exp, assume valid
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Update the useEffect that checks authentication
+  useEffect(() => {
+    if (isLoggedIn) {
+      if (!isAuthenticated() || !isTokenValid()) {
+        handleLogout();
+        setAuthFlow('login'); // Redirect to login page
+      }
+    }
+  }, [isLoggedIn]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      // Use apiPost instead of fetch
+      const data = await apiPost('/auth/login', { email, password });
 
-      if (!response.ok) {
-        let errorMsg = 'Login failed';
-        try {
-          const errData = await response.json();
-          errorMsg = errData.detail || errorMsg;
-        } catch { }
-        alert(errorMsg);
-        return { success: false };
-      }
-
-      const data = await response.json();
+      // Store tokens
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
 
-      const userResponse = await fetch('/api/users/me', {
-        headers: { 'Authorization': `Bearer ${data.access_token}` }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setUserEmail(userData.email);
+      // Store the role from the response
+      if (data.role) {
+        localStorage.setItem('user_role', data.role);
+        sessionStorage.setItem('userRole', data.role);
+        sessionStorage.setItem('user', JSON.stringify({ email, role: data.role }));
       }
 
-      navigate({
+      // Get user info using apiGet
+      try {
+        const userData = await apiGet('/users/me');
+        setUserEmail(userData.email);
+        localStorage.setItem('user_email', userData.email);
+      } catch (err) {
+        console.error('Failed to get user info:', err);
+      }
+
+      // Update state
+      setIsLoggedIn(true);
+      setShowRoleSelection(true);
+      setAuthFlow('landing');
+
+      if (data.role) {
+        setUserRole(data.role);
+      }
+
+      // Replace history
+      const newState = {
         isLoggedIn: true,
-        userRole: null,
-        showRoleSelection: true,
+        authFlow: 'landing',
         activePage: 'dashboard',
-        currentVendorPage: 'dashboard'
-      });
-      return { success: true };
-    } catch (error) {
+        currentVendorPage: 'dashboard',
+        userRole: data.role || null,
+        showRoleSelection: true
+      };
+      window.history.replaceState(newState, '', window.location.href);
+
+      return { success: true, role: data.role };
+    } catch (error: any) {
       console.error('Login error:', error);
-      alert('Cannot reach server. Make sure the backend is running on port 8000.');
+      alert(error.message || 'Cannot reach server. Make sure the backend is running on port 8000.');
       return { success: false };
     }
   };
 
+  // Update the token validation useEffect
+  useEffect(() => {
+    if (isLoggedIn) {
+      const token = getToken();
+      if (!token || isTokenExpired(token)) {
+        clearAuthData();
+        setAuthFlow('login');
+        setShowRoleSelection(false);
+        setIsLoggedIn(false);
+      }
+    }
+  }, [isLoggedIn]);
+
   const handleRoleSelection = (role: 'vendor' | 'client') => {
+    // Get the user's actual role from session storage or the stored state
+    const storedUser = sessionStorage.getItem('user');
+    let actualRole = userRole;
+
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        actualRole = userData.role;
+      } catch (e) {
+        console.error('Failed to parse user data', e);
+      }
+    }
+
+    // Validate if selected role matches the user's actual role
+    if (actualRole && actualRole !== role) {
+      const errorMsg = actualRole === 'client'
+        ? "You are registered as a client. Please continue as Client."
+        : "You are registered as a vendor. Please continue as Vendor.";
+
+      // Show error toast/notification
+      alert(errorMsg); // You can replace this with your toast system
+      return;
+    }
+
+    // Proceed with role selection
     localStorage.setItem('user_role', role);
-    navigate({
-      userRole: role,
-      showRoleSelection: false,
+
+    setUserRole(role);
+    setShowRoleSelection(false);
+    setActivePage('dashboard');
+
+    const newState = {
+      isLoggedIn: true,
+      authFlow: 'landing',
       activePage: 'dashboard',
-      currentVendorPage: 'dashboard'
-    });
+      currentVendorPage: 'dashboard',
+      userRole: role,
+      showRoleSelection: false
+    };
+    window.history.replaceState(newState, '', window.location.href);
   };
 
   const handleLogout = () => {
@@ -174,37 +435,50 @@ export default function App() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('app_nav_state');
     setUserEmail('');
-    navigate({
-      isLoggedIn: false,
-      authFlow: 'landing',
-      activePage: 'dashboard',
-      currentVendorPage: 'dashboard',
-      userRole: null,
-      showRoleSelection: false
-    });
+
+    // Simple redirect without replace to avoid blank tab
+    window.location.href = '/';
   };
 
   const handleClientPageChange = (page: string) => {
-    navigate({ activePage: page });
+    if (activePage === page) return; // Don't navigate to same page
+
+    setActivePage(page);
+    const currentState = { ...navRef.current, activePage: page };
+    window.history.replaceState(currentState, '', window.location.href);
   };
 
   const handleSettingsClick = () => {
-    navigate({ activePage: 'settings' });
+    if (activePage === 'settings') return;
+
+    setActivePage('settings');
+    const currentState = { ...navRef.current, activePage: 'settings' };
+    window.history.replaceState(currentState, '', window.location.href);
   };
 
   const handleViewMatches = (jobId: string, matchCount: number) => {
     setSearchFilters({ jobId, matchCount });
-    navigate({ activePage: 'search' });
+    setActivePage('search');
+    const currentState = { ...navRef.current, activePage: 'search' };
+    window.history.replaceState(currentState, '', window.location.href);
   };
 
   const handleCreateNewRequirement = () => {
-    navigate({ activePage: 'post-requirement' });
+    setActivePage('post-requirement');
     setShowPostRequirement(true);
+    const currentState = { ...navRef.current, activePage: 'post-requirement' };
+    window.history.replaceState(currentState, '', window.location.href);
   };
 
   const handleVendorPageChange = (page: 'dashboard' | 'resources' | 'contracts') => {
-    navigate({ currentVendorPage: page });
+    if (currentVendorPage === page) return;
+
+    setCurrentVendorPage(page);
+    const currentState = { ...navRef.current, currentVendorPage: page };
+    window.history.replaceState(currentState, '', window.location.href);
   };
 
   const handleForgotPassword = () => navigate({ authFlow: 'forgot-password' });
@@ -249,7 +523,12 @@ export default function App() {
               onSignup={handleSignup}
               onBackToHome={handleBackToHome}
             />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
@@ -257,7 +536,12 @@ export default function App() {
         return (
           <div>
             <SignupPage onSignup={handleSignupComplete} onBackToLogin={handleBackToLogin} onBackToHome={handleBackToHome} />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
@@ -265,15 +549,24 @@ export default function App() {
         return (
           <div>
             <ForgotPasswordPage onBackToLogin={handleBackToLogin} onSendCode={handleSendResetCode} />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
       if (authFlow === 'enter-otp') {
         return (
           <div>
-            <EnterOTPPage email={resetEmail} onBackToLogin={handleBackToLogin} onVerifyCode={handleVerifyOTP} onResendCode={handleResendCode} />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
@@ -281,7 +574,12 @@ export default function App() {
         return (
           <div>
             <ResetPasswordPage onBackToLogin={handleBackToLogin} onResetPassword={handleResetPassword} />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
@@ -289,7 +587,12 @@ export default function App() {
         return (
           <div>
             <PasswordResetSuccessPage onBackToLogin={handleBackToLogin} />
-            <Chatbot isLoggedIn={false} />
+            <Chatbot
+              isLoggedIn={false}
+              userRole={null}  // ← ADD THIS LINE
+              onLoginClick={handleLandingLogin}
+              onSignupClick={handleLandingGetStarted}
+            />
           </div>
         );
       }
@@ -304,7 +607,12 @@ export default function App() {
             onLogout={handleLogout}
             userEmail={userEmail}
           />
-          <Chatbot isLoggedIn={true} />
+          <Chatbot
+            isLoggedIn={true}
+            userRole={null}  // Role not selected yet
+            onLoginClick={handleLandingLogin}
+            onSignupClick={handleLandingGetStarted}
+          />
         </>
       );
     }
@@ -339,7 +647,12 @@ export default function App() {
           </main>
 
           <ScrollToTop />
-          <Chatbot isLoggedIn={true} />
+          <Chatbot
+            isLoggedIn={true}
+            userRole={userRole}  // ← ADD THIS LINE
+            onLoginClick={handleLandingLogin}
+            onSignupClick={handleLandingGetStarted}
+          />
         </div>
       );
     }
@@ -376,7 +689,9 @@ export default function App() {
                 <PostRequirement
                   onClose={() => {
                     setShowPostRequirement(false);
-                    navigate({ activePage: 'dashboard' });
+                    setActivePage('dashboard');
+                    const currentState = { ...navRef.current, activePage: 'dashboard' };
+                    window.history.replaceState(currentState, '', window.location.href);
                   }}
                 />
               )}
@@ -390,7 +705,12 @@ export default function App() {
           </main>
 
           <ScrollToTop />
-          <Chatbot isLoggedIn={true} />
+          <Chatbot
+            isLoggedIn={true}
+            userRole={userRole}  // ← ADD THIS LINE
+            onLoginClick={handleLandingLogin}
+            onSignupClick={handleLandingGetStarted}
+          />
         </div>
       );
     }

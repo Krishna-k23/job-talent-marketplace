@@ -33,6 +33,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    role: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -50,7 +51,7 @@ class PasswordResetRequest(BaseModel):
     otp: str
     new_password: str
 
-# User Schemas
+# Company Schemas
 class CompanyBase(BaseModel):
     name: str
     website: Optional[str] = None
@@ -61,15 +62,18 @@ class CompanyBase(BaseModel):
 class CompanyCreate(CompanyBase):
     pass
 
+class CompanyUpdate(CompanyBase):
+    pass
+
 class CompanyResponse(CompanyBase):
     id: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
-# app/schemas.py - Update User schemas
-
+# User Schemas
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
@@ -90,18 +94,38 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     vendor_name: Optional[str] = None
-    profile_picture: Optional[str] = None  # Add this line
+    profile_picture: Optional[str] = None
+    designation: Optional[str] = None
+    company: Optional[CompanyResponse] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     phone: Optional[str] = None
     vendor_name: Optional[str] = None
-    profile_picture: Optional[str] = None  # Add this line
+    profile_picture: Optional[str] = None
+    designation: Optional[str] = None
+    company: Optional[CompanyUpdate] = None
 
+class CompanyResponse(BaseModel):
+    id: int
+    name: str
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    size: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+        
 # Requirement Schemas
 class RequirementBase(BaseModel):
     role: str
@@ -216,7 +240,13 @@ class ContractResponse(ContractBase):
     vendor_name: Optional[str] = None
     requirement_role: Optional[str] = None
     resource_name: Optional[str] = None
-    
+
+class ContractUpdate(BaseModel):
+    status: Optional[ContractStatus] = None
+    rate: Optional[float] = None
+    billing_cycle: Optional[str] = None
+    description: Optional[str] = None
+
     class Config:
         from_attributes = True
 

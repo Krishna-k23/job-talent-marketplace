@@ -1,4 +1,4 @@
-# BenchBridge — Deployment Guide
+# BenchAstra — Deployment Guide
 
 ## Local Development (current setup)
 
@@ -19,8 +19,8 @@ npm run dev                # Runs on http://localhost:5173
 **Test credentials** (after running `init_db.py`):
 | Role   | Email              | Password          |
 |--------|--------------------|-------------------|
-| Client | client@test.com    | BenchBridge@2025  |
-| Vendor | vendor@test.com    | BenchBridge@2025  |
+| Client | client@test.com    | BenchAstra@2025  |
+| Vendor | vendor@test.com    | BenchAstra@2025  |
 
 ---
 
@@ -130,5 +130,5 @@ The browser shows "This password was found in a data breach" when a saved
 password matches Chrome's leaked-credentials database. This happens with
 obvious test passwords like `test123`.
 
-The test users now use `BenchBridge@2025` to avoid this warning.  
+The test users now use `BenchAstra@2025` to avoid this warning.  
 For production, all users should choose unique strong passwords.

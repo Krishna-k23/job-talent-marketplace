@@ -65,7 +65,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`px-3 py-2 rounded-lg border transition-all flex items-center gap-1 ${
+          className={`px-3 py-2 cursor-pointer rounded-lg border transition-all flex items-center gap-1 ${
             currentPage === 1
               ? 'border-border bg-secondary text-muted-foreground cursor-not-allowed'
               : 'border-border hover:border-primary hover:bg-accent text-foreground'
@@ -89,7 +89,7 @@ export function Pagination({
               <button
                 key={page}
                 onClick={() => onPageChange(page as number)}
-                className={`w-10 h-10 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                className={`w-10 cursor-pointer h-10 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   currentPage === page
                     ? 'bg-primary text-white shadow-md'
                     : 'text-foreground hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-primary'
@@ -104,7 +104,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`px-3 py-2 rounded-lg border transition-all flex items-center gap-1 ${
+          className={`px-3 cursor-pointer py-2 rounded-lg border transition-all flex items-center gap-1 ${
             currentPage === totalPages
               ? 'border-border bg-secondary text-muted-foreground cursor-not-allowed'
               : 'border-border hover:border-primary hover:bg-accent text-foreground'

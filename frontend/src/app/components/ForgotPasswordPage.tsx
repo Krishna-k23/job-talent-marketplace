@@ -53,14 +53,14 @@ export function ForgotPasswordPage({ onBackToLogin, onSendCode }: ForgotPassword
               <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span className="text-2xl font-bold text-white">BenchBridge</span>
+          <span className="text-2xl font-bold text-white">BenchAstra</span>
         </div>
 
         {/* Form Card */}
         <div className="bg-card dark:bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-border p-8">
           <button
             onClick={onBackToLogin}
-            className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mb-6"
+            className="flex items-center cursor-pointer gap-2 text-sm text-primary hover:text-primary/80 transition-colors mb-6"
           >
             <ArrowLeft size={16} />
             <span>Back to Login</span>
@@ -91,7 +91,7 @@ export function ForgotPasswordPage({ onBackToLogin, onSendCode }: ForgotPassword
 
             <button
               type="submit"
-              className="w-full h-11 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
+              className="w-full h-11 bg-primary cursor-pointer hover:bg-primary-hover text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
             >
               <span>Send Reset Code</span>
               <ArrowRight size={18} />

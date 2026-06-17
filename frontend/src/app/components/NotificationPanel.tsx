@@ -116,7 +116,7 @@ export function NotificationPanel({ unreadCount, onCountChange }: NotificationPa
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group"
+        className="relative cursor-pointer p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group"
         aria-label="Notifications"
       >
         <Bell size={22} className="text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" strokeWidth={2.5} />
@@ -141,13 +141,13 @@ export function NotificationPanel({ unreadCount, onCountChange }: NotificationPa
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                   title="Mark all as read"
                 >
                   <CheckCheck size={14} /> Mark all read
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+              <button onClick={() => setOpen(false)} className="p-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                 <X size={16} className="text-slate-500 dark:text-slate-400" />
               </button>
             </div>
@@ -185,7 +185,7 @@ export function NotificationPanel({ unreadCount, onCountChange }: NotificationPa
                   </div>
                   <button
                     onClick={() => deleteNotification(n.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all text-slate-400 hover:text-red-500 flex-shrink-0"
+                    className="opacity-0 cursor-pointer group-hover:opacity-100 p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all text-slate-400 hover:text-red-500 flex-shrink-0"
                     title="Delete"
                   >
                     <Trash2 size={14} />
