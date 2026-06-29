@@ -28,7 +28,7 @@ export function Sidebar({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
     { id: 'search', label: 'Search', icon: Search, badge: null },
-    { id: 'requirements', label: 'Requirements', icon: FileText, badge: '12' },
+    { id: 'requirements', label: 'Requirements', icon: FileText },
     { id: 'resources', label: 'Resources', icon: Users, badge: null },
     { id: 'billing', label: 'Billing', icon: CreditCard, badge: null },
     { id: 'settings', label: 'Settings', icon: Settings, badge: null },
