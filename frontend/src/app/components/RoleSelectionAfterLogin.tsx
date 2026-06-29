@@ -3,7 +3,7 @@ import React from 'react'
 import { Users, Briefcase, ArrowRight, CheckCircle, LogOut, XCircle } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../contexts/ThemeContext';
-import LogoLight from '../../assets/Logo 3.jpeg';
+import LogoLight from '../../assets/Logo 3.png';
 import LogoDark from '../../assets/Logo 4.png';
 
 interface RoleSelectionAfterLoginProps {

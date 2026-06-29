@@ -1,6 +1,11 @@
-// Dashboard.tsx - Updated with token refresh, better error handling, and upload loader
-import { useState, useEffect } from 'react';
-import { Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, MapPin, Briefcase, Target, Plus, Upload, ArrowRight, Activity, X, Download, Loader2 } from 'lucide-react';
+// Dashboard.tsx - No Scroll, Dynamic Layout
+import { useState, useEffect, useRef } from 'react';
+import { 
+  Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, 
+  MapPin, Target, Plus, Upload, ArrowRight, Activity, 
+  X, Download, Loader2, Sparkles, ChevronRight, Calendar, 
+  CheckCircle, BarChart3, PieChart, Layers, Zap, Award
+} from 'lucide-react';
 import { PostRequirement } from './PostRequirement';
 import { useToast } from '../contexts/ToastContext';
 
@@ -25,6 +30,9 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [visibleRequirements, setVisibleRequirements] = useState(6);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
 
@@ -71,7 +79,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
         'Authorization': `Bearer ${retryToken || token}`
       };
 
-      // For FormData, remove Content-Type header
       if (options.body instanceof FormData) {
         delete headers['Content-Type'];
       }
@@ -86,7 +93,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
 
     let response = await makeRequest();
 
-    // If token expired, try to refresh
     if (response.status === 401) {
       const refreshed = await refreshToken();
       if (refreshed) {
@@ -103,11 +109,9 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     return response;
   };
 
-  // Fetch dashboard stats from API
   const fetchStats = async () => {
     try {
       const response = await fetchWithAuth('/api/dashboard/client/stats');
-
       if (response.ok) {
         const data = await response.json();
         setStats({
@@ -124,14 +128,11 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
 
   const fetchRequirements = async () => {
     try {
-      const url = '/api/requirements/?limit=10';
-      const response = await fetchWithAuth(url);
-
+      const response = await fetchWithAuth('/api/requirements/?limit=12');
       if (response.ok) {
         const data = await response.json();
         setRequirements(data);
 
-        // Calculate requirements by role for chart
         const roleCounts: Record<string, number> = {};
         data.forEach((req: any) => {
           const role = req.role.split(' ')[0];
@@ -139,12 +140,32 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
         });
         const roleArray = Object.entries(roleCounts).map(([role, count]) => ({ role, count }));
         setRequirementsByRole(roleArray.slice(0, 6));
+
+        // Generate recent activity
+        const activities = data.slice(0, 3).map((req: any) => ({
+          id: req.id,
+          action: req.status === 'Open' ? 'New requirement posted' : 'Requirement updated',
+          role: req.role,
+          time: '2 hours ago',
+          status: req.status
+        }));
+        setRecentActivity(activities);
+        
+        // Calculate visible requirements based on container height
+        calculateVisibleItems(data.length);
       }
     } catch (error) {
       console.error('Failed to fetch requirements:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateVisibleItems = (total: number) => {
+    // Adjust visible items based on total to fill space without scrolling
+    if (total <= 3) setVisibleRequirements(total);
+    else if (total <= 6) setVisibleRequirements(6);
+    else setVisibleRequirements(9);
   };
 
   const fetchUser = async () => {
@@ -165,12 +186,23 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     fetchUser();
   }, []);
 
-  // Handle Add Requirement
+  // Update visible items when requirements change
+  useEffect(() => {
+    calculateVisibleItems(requirements.length);
+  }, [requirements]);
+
   const handleAddRequirement = () => {
     setShowPostRequirement(true);
   };
 
-  // Handle Bulk Upload - Updated with token refresh and loader
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBulkFile(file);
+    }
+    e.target.value = '';
+  };
+
   const handleBulkUpload = async () => {
     if (!bulkFile) {
       showError('Please select a CSV file');
@@ -178,7 +210,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     }
 
     setBulkUploading(true);
-
     const formData = new FormData();
     formData.append('file', bulkFile);
 
@@ -196,7 +227,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
         body: formData
       });
 
-      // If token expired, try to refresh
       if (response.status === 401) {
         const refreshed = await refreshToken();
         if (refreshed) {
@@ -232,7 +262,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     }
   };
 
-  // Handle Download CSV Template
   const handleDownloadTemplate = () => {
     const csvContent = `role,experience_min,experience_max,positions,skills,budget_min,budget_max,duration,work_mode,start_date,location,description
 DevOps Engineer,5,8,2,"AWS,Docker,Kubernetes",100000,150000,12 Months,Hybrid,Immediate,Bangalore,"Looking for experienced DevOps engineer"
@@ -251,10 +280,54 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
   };
 
   const summaryStats = [
-    { label: 'Total Requirements', value: stats.totalRequirements.toString(), trend: '+12%', trendUp: true, icon: FileText, bgColor: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Open Requirements', value: stats.openRequirements.toString(), trend: '+8%', trendUp: true, icon: Target, bgColor: 'bg-orange-50 dark:bg-orange-950/30', iconColor: 'text-orange-600 dark:text-orange-400' },
-    { label: 'Closed Requirements', value: stats.closedRequirements.toString(), trend: '+4', trendUp: true, icon: Briefcase, bgColor: 'bg-green-50 dark:bg-green-950/30', iconColor: 'text-green-600 dark:text-green-400' },
-    { label: 'Total Matching Profiles', value: stats.totalMatchingProfiles.toString(), trend: '+15%', trendUp: true, icon: Users, bgColor: 'bg-purple-50 dark:bg-purple-950/30', iconColor: 'text-purple-600 dark:text-purple-400' },
+    { 
+      label: 'Total Requirements', 
+      value: stats.totalRequirements.toString(), 
+      trend: '+12%', 
+      trendUp: true, 
+      icon: FileText, 
+      gradient: 'from-blue-500 to-indigo-600',
+      bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20',
+      iconBg: 'bg-blue-500/20', 
+      iconColor: 'text-blue-500',
+      description: 'All time requirements'
+    },
+    { 
+      label: 'Open Positions', 
+      value: stats.openRequirements.toString(), 
+      trend: '+8%', 
+      trendUp: true, 
+      icon: Target, 
+      gradient: 'from-amber-500 to-orange-600',
+      bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20',
+      iconBg: 'bg-amber-500/20', 
+      iconColor: 'text-amber-500',
+      description: 'Currently active'
+    },
+    { 
+      label: 'Closed Positions', 
+      value: stats.closedRequirements.toString(), 
+      trend: '+4', 
+      trendUp: true, 
+      icon: CheckCircle, 
+      gradient: 'from-emerald-500 to-green-600',
+      bgGradient: 'from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20',
+      iconBg: 'bg-emerald-500/20', 
+      iconColor: 'text-emerald-500',
+      description: 'Successfully filled'
+    },
+    { 
+      label: 'Matching Profiles', 
+      value: stats.totalMatchingProfiles.toString(), 
+      trend: '+15%', 
+      trendUp: true, 
+      icon: Users, 
+      gradient: 'from-purple-500 to-pink-600',
+      bgGradient: 'from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20',
+      iconBg: 'bg-purple-500/20', 
+      iconColor: 'text-purple-500',
+      description: 'Best matches found'
+    },
   ];
 
   const filteredRequirements = requirements.filter(req => {
@@ -264,16 +337,38 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
 
   const maxRoleCount = Math.max(...requirementsByRole.map(r => r.count), 1);
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  // Color palette for role bars
+  const roleColors = [
+    'from-blue-600 to-indigo-600',
+    'from-purple-600 to-pink-600',
+    'from-emerald-600 to-teal-600',
+    'from-orange-600 to-red-600',
+    'from-cyan-600 to-blue-600',
+    'from-rose-600 to-pink-600'
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="h-full flex flex-col space-y-4 overflow-hidden">
       {/* Post Requirement Dialog */}
       {showPostRequirement && (
         <PostRequirement
@@ -287,80 +382,97 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
 
       {/* Bulk Upload Modal */}
       {showBulkUpload && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-cyan-600 rounded-t-2xl">
-              <h3 className="text-xl font-bold text-white">Bulk Upload Requirements</h3>
-              <button
-                onClick={() => {
-                  if (!bulkUploading) {
-                    setShowBulkUpload(false);
-                    setBulkFile(null);
-                  }
-                }}
-                className="p-1 hover:bg-white/20 rounded-lg disabled:opacity-50"
-                disabled={bulkUploading}
-              >
-                <X size={24} className="text-white cursor-pointer" />
-              </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform animate-in zoom-in-95 duration-200">
+            <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Bulk Upload</h3>
+                  <p className="text-blue-100 text-sm mt-1">Import multiple requirements at once</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!bulkUploading) {
+                      setShowBulkUpload(false);
+                      setBulkFile(null);
+                    }
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 disabled:opacity-50"
+                  disabled={bulkUploading}
+                >
+                  <X size={24} className="text-white" />
+                </button>
+              </div>
             </div>
             <div className="p-6 space-y-4">
               {bulkUploading ? (
-                // Uploading loader
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 size={48} className="text-primary animate-spin mb-4" />
-                  <p className="text-lg font-semibold text-foreground">Uploading...</p>
-                  <p className="text-sm text-muted-foreground">Please wait while we process your file</p>
-                  <div className="w-full max-w-xs mt-4 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  <div className="relative">
+                    <Loader2 size={56} className="text-blue-600 animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-4 h-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold text-slate-800 dark:text-slate-100 mt-4">Uploading...</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Please wait while we process your file</p>
+                  <div className="w-full max-w-xs mt-6 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-600 to-purple-600 rounded-full animate-shimmer" style={{ width: '60%' }}></div>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div
-                    className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
-                    onClick={() => document.getElementById('bulk-file')?.click()}
-                  >
-                    <Upload size={40} className="mx-auto text-slate-400 mb-3" />
-                    <p className="text-sm text-slate-600 mb-2">Click to upload CSV file</p>
-                    <p className="text-xs text-slate-400">Download template for correct format</p>
+                  <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 group">
                     <input
                       type="file"
                       accept=".csv"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setBulkFile(file);
-                        }
-                      }}
+                      onChange={handleFileSelect}
                       className="hidden"
-                      id="bulk-file"
+                      id="bulk-file-input"
                     />
-                    <label htmlFor="bulk-file" className="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm cursor-pointer hover:bg-blue-700">
-                      Choose File
+                    <label htmlFor="bulk-file-input" className="cursor-pointer block">
+                      <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <Upload size={36} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-4 font-medium">
+                        {bulkFile ? 'Change file' : 'Click to upload CSV file'}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">Supported format: .csv</p>
                     </label>
-                    {bulkFile && <p className="mt-2 text-sm text-green-600">Selected: {bulkFile.name}</p>}
+                    {bulkFile && (
+                      <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-medium">
+                        <CheckCircle size={16} />
+                        {bulkFile.name}
+                      </div>
+                    )}
                   </div>
-                  <button onClick={handleDownloadTemplate} className="w-full py-2 text-blue-600 text-sm font-semibold hover:underline cursor-pointer">
+                  
+                  <button 
+                    onClick={handleDownloadTemplate} 
+                    className="w-full py-3 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:underline flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Download size={16} />
                     Download CSV Template
                   </button>
-                  <div className="flex gap-3 pt-4">
+                  
+                  <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => {
                         setShowBulkUpload(false);
                         setBulkFile(null);
                       }}
-                      className="flex-1 px-6 py-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
+                      className="flex-1 px-6 py-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-medium"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleBulkUpload}
                       disabled={!bulkFile}
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-cyan-700 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
                     >
                       <Upload size={18} />
-                      Upload
+                      Upload Now
                     </button>
                   </div>
                 </>
@@ -370,148 +482,419 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
         </div>
       )}
 
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Good morning, {userName} 👋</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 text-sm sm:text-base">
-          <Activity size={16} /> Here's what's happening with your requirements today
-        </p>
+      {/* Header Section - Compact */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-5 shadow-2xl flex-shrink-0">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={18} className="text-yellow-300 animate-pulse" />
+              <span className="text-blue-100 text-xs font-medium">Welcome back</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              {getGreeting()}, {userName} 👋
+            </h1>
+            <p className="text-blue-100 text-sm mt-0.5 flex items-center gap-2">
+              <Activity size={14} /> 
+              <span>Here's what's happening with your requirements today</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={handleAddRequirement}
+              className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all duration-300 flex items-center gap-2 font-medium border border-white/20 text-sm hover:scale-105"
+            >
+              <Plus size={16} />
+              Add New
+            </button>
+            <button 
+              onClick={() => setShowBulkUpload(true)}
+              className="px-4 py-2 bg-white text-blue-600 rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 font-medium text-sm"
+            >
+              <Upload size={16} />
+              Bulk Upload
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      {/* Summary Cards - Compact */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
         {summaryStats.map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border hover:shadow-xl transition-all">
-            <div className="flex items-start justify-between mb-3 sm:mb-4">
-              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
-                <stat.icon size={20} className={`${stat.iconColor} sm:hidden`} strokeWidth={2.5} />
-                <stat.icon size={28} className={`${stat.iconColor} hidden sm:block`} strokeWidth={2.5} />
+          <div 
+            key={index} 
+            className={`group bg-gradient-to-br ${stat.bgGradient} rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5`}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className={`w-10 h-10 rounded-xl ${stat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                <stat.icon size={20} className={stat.iconColor} strokeWidth={2} />
               </div>
-              <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                {stat.trendUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              <div className={`flex items-center gap-0.5 text-xs font-medium ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'} bg-white/60 dark:bg-slate-800/60 px-2 py-0.5 rounded-full`}>
+                {stat.trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 <span>{stat.trend}</span>
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{stat.label}</div>
+            <div>
+              <div className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                {stat.value}
+              </div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-400">{stat.label}</div>
             </div>
+            <div className={`mt-2 h-0.5 w-full rounded-full bg-gradient-to-r ${stat.gradient} opacity-20 group-hover:opacity-100 transition-opacity duration-300`}></div>
           </div>
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Active Requirements</h2>
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
+      {/* Main Content - Takes remaining height with flex-1 */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div className="xl:col-span-3 flex flex-col min-h-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0 mb-2">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Layers size={20} className="text-blue-600" />
+              Active Requirements
+              <span className="text-sm font-normal text-slate-500 dark:text-slate-400 ml-1">
+                ({filteredRequirements.length} total)
+              </span>
+            </h2>
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1 border border-slate-200/60 dark:border-slate-700/50">
               {(['all', 'open', 'closed'] as const).map((filter) => (
-                <button key={filter} onClick={() => setStatusFilter(filter)} className={`px-4 py-2 text-sm font-medium cursor-pointer rounded-lg transition-all ${statusFilter === filter ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}>
+                <button 
+                  key={filter} 
+                  onClick={() => setStatusFilter(filter)} 
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 ${
+                    statusFilter === filter 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30' 
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/50'
+                  }`}
+                >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredRequirements.slice(0, 6).map((req) => (
-              <div key={req.id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 border hover:shadow-xl transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="text-sm font-bold text-blue-600 mb-1">{req.requirement_id || req.id}</div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100">{req.role}</h3>
+          {/* Requirements Grid - Takes remaining height with overflow-hidden */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${
+              filteredRequirements.length > 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-2'
+            } gap-3 h-full`}>
+              {filteredRequirements.slice(0, visibleRequirements).map((req, index) => (
+                <div 
+                  key={req.id} 
+                  className="group bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 flex flex-col"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-full">
+                        {req.requirement_id || req.id}
+                      </div>
+                      <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
+                        {req.role}
+                      </h3>
+                    </div>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+                      req.status === 'Open' 
+                        ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200' 
+                        : 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      {req.status}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${req.status === 'Open' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                    {req.status}
-                  </span>
+                  
+                  <div className="space-y-1.5 mb-2 flex-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Clock size={12} className="text-blue-500" /> 
+                        Exp
+                      </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {req.experience_min}-{req.experience_max}y
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <DollarSign size={12} className="text-emerald-500" /> 
+                        Budget
+                      </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
+                        ₹{req.budget_min?.toLocaleString()}-{req.budget_max?.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <MapPin size={12} className="text-purple-500" /> 
+                        Location
+                      </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
+                        {req.location || 'Remote'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {req.skills?.slice(0, 2).map((skill: string, idx: number) => (
+                      <span key={idx} className="px-2 py-0.5 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] font-medium border border-blue-100 dark:border-blue-800 truncate max-w-[70px]">
+                        {skill}
+                      </span>
+                    ))}
+                    {req.skills?.length > 2 && (
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full text-[9px] font-medium">
+                        +{req.skills.length - 2}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <button 
+                    onClick={() => onViewMatches?.(req.id, req.matches_count || 0)} 
+                    className="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 group hover:shadow-lg hover:shadow-blue-500/30 text-xs"
+                  >
+                    <span>View {req.matches_count || 0} Profiles</span>
+                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-2"><Clock size={16} /> Experience</span>
-                    <span className="font-medium">{req.experience_min}-{req.experience_max} yrs</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-2"><DollarSign size={16} /> Budget</span>
-                    <span className="font-medium">₹{req.budget_min?.toLocaleString()}-{req.budget_max?.toLocaleString()}/mo</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-2"><MapPin size={16} /> Location</span>
-                    <span className="font-medium">{req.location || 'Remote'}</span>
+              ))}
+              
+              {/* Empty state - fill remaining space with placeholder cards if needed */}
+              {filteredRequirements.length === 0 && (
+                <div className="col-span-full flex items-center justify-center p-8 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                  <div className="text-center">
+                    <FileText size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400">No requirements found</p>
+                    <button 
+                      onClick={handleAddRequirement}
+                      className="mt-3 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
+                    >
+                      Create your first requirement
+                    </button>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {req.skills?.slice(0, 3).map((skill: string, idx: number) => (
-                    <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">{skill}</span>
-                  ))}
-                </div>
-                <button onClick={() => onViewMatches?.(req.id, req.matches_count || 0)} className="w-full py-3 bg-gradient-to-r cursor-pointer from-blue-600 to-cyan-600 hover:from-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
-                  View {req.matches_count || 0} Profiles <ArrowRight size={16} />
-                </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
-            <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button onClick={handleAddRequirement} className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 transition-all cursor-pointer">
-                <Plus size={20} /><span className="font-semibold">Add Requirement</span>
+        {/* Right Sidebar - Compact */}
+        <div className="flex flex-col gap-3 overflow-hidden">
+          {/* Quick Stats Widget */}
+          <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-4 text-white shadow-xl flex-shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <Award size={16} className="text-blue-200" />
+              <span className="text-blue-100 text-xs font-medium">Performance</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <span className="text-blue-100 text-xs">Match Rate</span>
+                <span className="font-bold text-base">
+                  {stats.totalRequirements ? Math.round((stats.totalMatchingProfiles / stats.totalRequirements) * 10) : 0}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <span className="text-blue-100 text-xs">Open Rate</span>
+                <span className="font-bold text-base">
+                  {stats.totalRequirements ? Math.round((stats.openRequirements / stats.totalRequirements) * 100) : 0}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <span className="text-blue-100 text-xs">Total Matches</span>
+                <span className="font-bold text-base">{stats.totalMatchingProfiles}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-3">
+              <Zap size={16} className="text-blue-600" />
+              Quick Actions
+            </h3>
+            <div className="space-y-2">
+              <button 
+                onClick={handleAddRequirement} 
+                className="w-full flex items-center gap-2 p-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 group"
+              >
+                <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus size={14} />
+                </div>
+                <span className="font-semibold flex-1 text-left text-xs">Add Requirement</span>
+                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
-              <button onClick={() => setShowBulkUpload(true)} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer">
-                <Upload size={20} /><span className="font-semibold">Bulk Upload</span>
+              
+              <button 
+                onClick={() => setShowBulkUpload(true)} 
+                className="w-full flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
+              >
+                <div className="w-7 h-7 bg-blue-100 dark:bg-blue-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Upload size={14} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="font-semibold flex-1 text-left text-xs text-slate-700 dark:text-slate-300">Bulk Upload</span>
+                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button onClick={handleDownloadTemplate} className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer">
-                <Download size={20} /><span className="font-semibold">Download Template</span>
+              
+              <button 
+                onClick={handleDownloadTemplate} 
+                className="w-full flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
+              >
+                <div className="w-7 h-7 bg-emerald-100 dark:bg-emerald-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <span className="font-semibold flex-1 text-left text-xs text-slate-700 dark:text-slate-300">Template</span>
+                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
-            <h3 className="text-lg font-bold mb-4">Requirements by Status</h3>
-            <div className="space-y-4">
+          {/* Status Distribution - Compact */}
+          <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-1 min-h-0 overflow-hidden">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-2">
+              <PieChart size={16} className="text-blue-600" />
+              Status Distribution
+            </h3>
+            <div className="space-y-2">
               <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Open</span>
-                  <span className="text-sm font-bold">{stats.openRequirements}</span>
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 inline-block"></span>
+                    Open
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{stats.openRequirements}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
-                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.openRequirements / stats.totalRequirements) * 100 : 0}%` }}></div>
+                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-1000" 
+                    style={{ width: `${stats.totalRequirements ? (stats.openRequirements / stats.totalRequirements) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
               <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Closed</span>
-                  <span className="text-sm font-bold">{stats.closedRequirements}</span>
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-green-500 inline-block"></span>
+                    Closed
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{stats.closedRequirements}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
-                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.totalRequirements ? (stats.closedRequirements / stats.totalRequirements) * 100 : 0}%` }}></div>
+                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-1000" 
+                    style={{ width: `${stats.totalRequirements ? (stats.closedRequirements / stats.totalRequirements) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
+              <div className="pt-1 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500 dark:text-slate-400">Total</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{stats.totalRequirements}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity - Compact */}
+          <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0 max-h-[120px] overflow-hidden">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-2">
+              <Activity size={16} className="text-blue-600" />
+              Recent Activity
+            </h3>
+            <div className="space-y-1.5">
+              {recentActivity.length > 0 ? (
+                recentActivity.slice(0, 2).map((activity, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-lg transition-colors">
+                    <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center flex-shrink-0">
+                      {activity.status === 'Open' ? (
+                        <Plus size={12} className="text-blue-600" />
+                      ) : (
+                        <CheckCircle size={12} className="text-emerald-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                        {activity.action}
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {activity.role}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                      {activity.time}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-2">
+                  No recent activity
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Requirements by Role Chart */}
+      {/* Requirements by Role Chart - Compact */}
       {requirementsByRole.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border">
-          <h3 className="text-lg font-bold mb-6">Requirements by Role</h3>
-          <div className="flex items-end justify-between gap-4 h-48">
-            {requirementsByRole.map((data, index) => (
-              <div key={index} className="flex-1 flex flex-col justify-end items-center gap-3 h-full">
-                <div className="w-full flex flex-col justify-end h-full">
-                  <div className="w-full bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-lg relative group" style={{ height: `${(data.count / maxRoleCount) * 100}%` }}>
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap">
-                      {data.count} requirements
+        <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <BarChart3 size={18} className="text-blue-600" />
+              Requirements by Role
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {requirementsByRole.reduce((sum, r) => sum + r.count, 0)} total
+              </span>
+              <div className="w-px h-3 bg-slate-200 dark:bg-slate-700"></div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {requirementsByRole.length} roles
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-end justify-center gap-4 min-h-[80px]">
+            {requirementsByRole.map((data, index) => {
+              const percentage = (data.count / maxRoleCount) * 100;
+              const color = roleColors[index % roleColors.length];
+              const barHeight = Math.max(percentage, 15);
+              
+              return (
+                <div key={index} className="flex flex-col items-center gap-1.5 min-w-[40px] flex-1 max-w-[80px]">
+                  <div className="w-full flex flex-col justify-end h-[60px] group">
+                    <div 
+                      className={`w-full bg-gradient-to-t ${color} rounded-md relative transition-all duration-500 hover:opacity-80 cursor-pointer`}
+                      style={{ height: `${barHeight}%` }}
+                    >
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-semibold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap shadow-lg">
+                        {data.count}
+                        <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-slate-900 dark:bg-slate-100 rotate-45"></div>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-[10px] font-medium text-slate-600 dark:text-slate-400 text-center truncate w-full px-1">
+                    {data.role}
+                  </div>
                 </div>
-                <div className="text-xs font-medium text-center">{data.role}</div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+          
+          {/* Legend for bar chart */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+            {requirementsByRole.slice(0, 4).map((data, index) => {
+              const color = roleColors[index % roleColors.length];
+              return (
+                <div key={index} className="flex items-center gap-1">
+                  <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${color}`}></div>
+                  <span className="text-[9px] text-slate-600 dark:text-slate-400 truncate max-w-[40px]">
+                    {data.role}
+                  </span>
+                </div>
+              );
+            })}
+            {requirementsByRole.length > 4 && (
+              <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                +{requirementsByRole.length - 4} more
+              </span>
+            )}
           </div>
         </div>
       )}

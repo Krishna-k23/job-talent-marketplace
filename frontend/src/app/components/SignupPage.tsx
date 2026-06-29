@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle';
 import Carousel1 from "../../assets/Carousel 1.jpeg";
 import Carousel2 from "../../assets/Carousel 2.jpeg";
 import Carousel3 from "../../assets/Carousel 3.jpeg";
-import LogoLight from '../../assets/Logo 3.jpeg';
+import LogoLight from '../../assets/Logo 3.png';
 import LogoDark from '../../assets/Logo 4.png';
 import { apiPost } from '@/config/api';
 
@@ -485,43 +485,14 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
               />
             ))}
           </div>
-
-          {/* Navigation Arrows */}
-          {/* <button
-            onClick={goToPreviousImage}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all cursor-pointer"
-            aria-label="Previous image"
-          >
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-          <button
-            onClick={goToNextImage}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all cursor-pointer"
-            aria-label="Next image"
-          >
-            <ArrowRight size={20} className="text-white" />
-          </button> */}
         </div>
       </div>
 
-      {/* Right Side - Form (unchanged) */}
+      {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 bg-white dark:bg-slate-900 flex flex-col">
-        {/* Header */}
-        <div className="absolute top-6 left-6 right-6 z-20">
-          <div className="flex items-center justify-between">
-            {onBackToHome && (
-              <button
-                onClick={onBackToHome}
-                className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm transition-all duration-200 group"
-              >
-                <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-                <span>Back to Home</span>
-              </button>
-            )}
-            <div className={!onBackToHome ? 'ml-auto' : ''}>
-              <ThemeToggle />
-            </div>
-          </div>
+        {/* Only ThemeToggle in top right */}
+        <div className="absolute top-6 right-6 z-20">
+          <ThemeToggle />
         </div>
 
         <div className="flex-1 flex items-center justify-center py-6 px-6">
@@ -531,6 +502,20 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
           </div>
 
           <div className="w-full max-w-md">
+            {/* Back to Home button - placed above Create account */}
+            {onBackToHome && (
+              <div className="mb-3">
+                <button
+                  onClick={onBackToHome}
+                  className="flex cursor-pointer items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors group"
+                >
+                  <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                  <span>Back to Home</span>
+                </button>
+              </div>
+            )}
+
+            {/* Create account text */}
             <div className="text-center mb-5">
               <p className="text-gray-600 dark:text-gray-400 font-medium">Create your account</p>
             </div>
@@ -552,7 +537,7 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
             </div>
 
             <form onSubmit={handleSubmit} autoComplete="off">
-              {/* Step 1: Company Details (unchanged) */}
+              {/* Step 1: Company Details */}
               {currentStep === 1 && (
                 <div className="space-y-3">
                   <div>
@@ -652,7 +637,7 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
                 </div>
               )}
 
-              {/* Step 2: Contact Details (unchanged) */}
+              {/* Step 2: Contact Details */}
               {currentStep === 2 && (
                 <div className="space-y-3">
                   <div>
@@ -816,7 +801,7 @@ export function SignupPage({ onSignup, onBackToLogin, onBackToHome }: SignupPage
                 </div>
               )}
 
-              {/* Step 3: OTP Verification (unchanged) */}
+              {/* Step 3: OTP Verification */}
               {currentStep === 3 && (
                 <div className="space-y-3">
                   <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">

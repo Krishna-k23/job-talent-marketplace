@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowRight, ArrowLeft, CheckCircle2, X, Plus } from 'lucide-react';
 import { DatePicker } from './DatePicker';
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface PostRequirementProps {
   onClose: () => void;
@@ -37,6 +38,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
     budgetMin: '',
     budgetMax: '',
     duration: '6 Months',
+    customDuration: '',
     workMode: 'Remote',
     startDate: 'Immediate',
     customStartDate: '',
@@ -187,7 +189,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
           must_have_skills: formData.mustHaveSkills,
           budget_min: parseFloat(formData.budgetMin),
           budget_max: parseFloat(formData.budgetMax),
-          duration: formData.duration,
+          duration: formData.duration === 'Custom' ? formData.customDuration : formData.duration,
           work_mode: formData.workMode,
           start_date: formData.startDate,
           custom_start_date: formData.customStartDate,
@@ -209,6 +211,23 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const getDurationDisplay = () => {
+    if (formData.duration === 'Custom') {
+      return formData.customDuration ? `${formData.customDuration} Months` : 'Custom';
+    }
+    return formData.duration;
+  };
+
+  const handlePickDateClick = () => {
+    setFormData({ ...formData, startDate: 'Pick Date' });
+    setShowDatePicker(true);
+  };
+
+  const handleImmediateClick = () => {
+    setShowDatePicker(false);
+    setFormData({ ...formData, startDate: 'Immediate', customStartDate: '' });
   };
 
   return (
@@ -235,7 +254,7 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
             </button>
           </div>
 
-          {/* Step Indicator - Reduced spacing */}
+          {/* Step Indicator */}
           <div className="flex items-start justify-center gap-4">
             {[
               { num: 1, label: 'Basic Info' },
@@ -246,10 +265,10 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                 <div className="flex flex-col items-center">
                   <div
                     className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs transition-all duration-300 ${num === step
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-105'
-                        : num < step
-                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 border-2 border-blue-600'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-2 border-slate-200 dark:border-slate-600'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-105'
+                      : num < step
+                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 border-2 border-blue-600'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-2 border-slate-200 dark:border-slate-600'
                       }`}
                   >
                     {num < step ? <CheckCircle2 size={14} /> : num}
@@ -257,8 +276,8 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
 
                   <span
                     className={`text-[10px] font-medium mt-0.5 whitespace-nowrap ${num === step
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-slate-400 dark:text-slate-500'
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-400 dark:text-slate-500'
                       }`}
                   >
                     {label}
@@ -268,8 +287,8 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                 {index < 2 && (
                   <div
                     className={`w-12 h-0.5 mt-4 rounded-full transition-all duration-300 ${num < step
-                        ? 'bg-blue-600'
-                        : 'bg-slate-200 dark:bg-slate-600'
+                      ? 'bg-blue-600'
+                      : 'bg-slate-200 dark:bg-slate-600'
                       }`}
                   />
                 )}
@@ -294,10 +313,13 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                     type="text"
                     value={formData.role}
                     onChange={e => {
-                      setFormData({ ...formData, role: e.target.value });
+                      // Only allow letters, spaces, hyphens, and parentheses
+                      const value = e.target.value;
+                      const filteredValue = value.replace(/[^a-zA-Z\s\-\(\)]/g, '');
+                      setFormData({ ...formData, role: filteredValue });
                       if (errors.role) setErrors({ ...errors, role: undefined });
                     }}
-                    placeholder="Enter role title"
+                    placeholder="Enter role title (e.g., DevOps Engineer)"
                     className={`w-full h-10 px-3 bg-white dark:bg-slate-800 border ${errors.role ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'
                       } text-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-400 text-sm`}
                   />
@@ -405,8 +427,8 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                         onClick={() => addSkill(skill)}
                         disabled={formData.skills.includes(skill)}
                         className={`px-2.5 py-1.5 cursor-pointer text-xs font-medium rounded-lg border transition-all ${formData.skills.includes(skill)
-                            ? 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                            : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'
+                          ? 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                          : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'
                           }`}
                       >
                         {skill}
@@ -526,15 +548,42 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                     {['3 Months', '6 Months', '12 Months', 'Custom'].map(dur => (
                       <button
                         key={dur}
-                        onClick={() => setFormData({ ...formData, duration: dur })}
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            duration: dur,
+                            customDuration: dur === 'Custom' ? formData.customDuration : ''
+                          });
+                        }}
                         className={`py-1.5 cursor-pointer text-xs font-semibold rounded-lg transition-all duration-200 ${formData.duration === dur
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                            : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600'
                           }`}
                       >
                         {dur}
                       </button>
                     ))}
+                  </div>
+
+                  {/* Custom Duration Input */}
+                  {formData.duration === 'Custom' && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.customDuration}
+                        onChange={(e) => {
+                          setFormData({ ...formData, customDuration: e.target.value });
+                        }}
+                        placeholder="Enter months"
+                        className="flex-1 h-10 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-400 text-sm"
+                      />
+                      <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">Months</span>
+                    </div>
+                  )}
+
+                  <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Selected: {getDurationDisplay()}
                   </div>
                 </div>
 
@@ -546,8 +595,8 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                         key={mode}
                         onClick={() => setFormData({ ...formData, workMode: mode })}
                         className={`py-1.5 cursor-pointer text-sm font-semibold rounded-lg transition-all duration-200 ${formData.workMode === mode
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                            : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                          : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600'
                           }`}
                       >
                         {mode}
@@ -556,61 +605,42 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
                   </div>
                 </div>
 
-                <div className="relative" ref={datePickerRef}>
+                <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Date</label>
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {['Immediate', 'Pick Date'].map(date => (
-                        <button
-                          key={date}
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, startDate: date });
-                            if (date === 'Pick Date') {
-                              setShowDatePicker(true);
-                            } else {
-                              setShowDatePicker(false);
-                            }
-                          }}
-                          className={`py-1.5 cursor-pointer text-sm font-semibold rounded-lg transition-all duration-200 ${formData.startDate === date
-                              ? 'bg-green-600 text-white shadow-lg shadow-green-500/30'
-                              : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-600'
-                            }`}
-                        >
-                          {date === 'Immediate' && <CheckCircle2 size={14} className="inline mr-1" />}
-                          {date}
-                        </button>
-                      ))}
-                    </div>
 
-                    {/* Date Picker - Appears ABOVE the button */}
-                    {showDatePicker && formData.startDate === 'Pick Date' && (
-                      <div className="absolute bottom-full left-0 mb-2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 w-full">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Select Date</span>
-                          <button
-                            onClick={() => setShowDatePicker(false)}
-                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                          >
-                            <X size={16} className="text-slate-400" />
-                          </button>
-                        </div>
-                        <DatePicker
-                          value={formData.customStartDate}
-                          onChange={(date) => {
-                            handleDateSelect(date);
-                          }}
-                          disabled={formData.startDate !== 'Pick Date'}
-                        />
-                      </div>
-                    )}
-
-                    {formData.startDate === 'Pick Date' && formData.customStartDate && (
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                        Selected: {formData.customStartDate}
-                      </div>
-                    )}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleImmediateClick}
+                      className={`py-1.5 cursor-pointer text-sm font-semibold rounded-lg transition-all duration-200 ${formData.startDate === 'Immediate'
+                        ? 'bg-green-600 text-white shadow-lg shadow-green-500/30'
+                        : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-600'
+                        }`}
+                    >
+                      <CheckCircle2 size={14} className="inline mr-1" />
+                      Immediate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePickDateClick}
+                      className={`py-1.5 cursor-pointer text-sm font-semibold rounded-lg transition-all duration-200 ${formData.startDate === 'Pick Date'
+                        ? 'bg-green-600 text-white shadow-lg shadow-green-500/30'
+                        : 'bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-600'
+                        }`}
+                    >
+                      Pick Date
+                    </button>
                   </div>
+
+                  {formData.startDate === 'Pick Date' && formData.customStartDate && (
+                    <div className="mt-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
+                      Selected: {new Date(formData.customStartDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -647,6 +677,35 @@ export function PostRequirement({ onClose }: PostRequirementProps) {
           )}
         </div>
       </div>
+
+      {/* Date Picker Portal - Centered Overlay */}
+      {showDatePicker && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={datePickerRef}
+            className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Select Date</h3>
+              <button
+                onClick={() => setShowDatePicker(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+            <DatePicker
+              value={formData.customStartDate}
+              onChange={(date) => {
+                handleDateSelect(date);
+              }}
+              disabled={formData.startDate !== 'Pick Date'}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

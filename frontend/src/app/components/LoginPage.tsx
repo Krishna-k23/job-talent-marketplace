@@ -5,7 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import Carousel1 from "../../assets/Carousel 1.jpeg";
 import Carousel2 from "../../assets/Carousel 2.jpeg";
 import Carousel3 from "../../assets/Carousel 3.jpeg";
-import LogoLight from '../../assets/Logo 3.jpeg';
+import LogoLight from '../../assets/Logo 3.png';
 import LogoDark from '../../assets/Logo 4.png';
 import { apiPost } from '@/config/api';
 import { apiGet } from '@/config/api';
@@ -49,7 +49,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
     setError('');
 
     try {
-      // Use apiPost instead of the onLogin prop
+      // First, call the API to login
       const data = await apiPost('/auth/login', { email, password });
 
       // Store tokens
@@ -72,21 +72,42 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
       }
 
       // Call the onLogin prop to update app state
-      await onLogin(email, password);
+      const result = await onLogin(email, password);
+
+      // Check if login was successful
+      if (!result.success) {
+        // If login failed, show error
+        setError('Login failed. Please try again.');
+        // Clear any stored tokens since login failed
+        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_role');
+        sessionStorage.removeItem('userRole');
+        sessionStorage.removeItem('user');
+      }
+      // If success, the app state will handle navigation
 
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      // Handle specific error cases from the API
+      if (err.response?.status === 401) {
+        // Check if the error message contains registration hint
+        if (err.response?.data?.detail?.includes('register')) {
+          setError('No account found with this email. Please register as a client or vendor.');
+        } else {
+          setError('Invalid email or password. Please try again.');
+        }
+      } else if (err.message?.includes('Incorrect email or password')) {
+        setError('Invalid credentials. Please check your email and password.');
+      } else if (err.response?.data?.detail) {
+        // Use the detailed error message from the backend
+        setError(err.response.data.detail);
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const goToPreviousImage = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? CAROUSEL_IMAGES.length - 1 : prev - 1));
-  };
-
-  const goToNextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
   };
 
   return (
@@ -166,22 +187,6 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
               />
             ))}
           </div>
-
-          {/* Navigation Arrows */}
-          {/* <button
-            onClick={goToPreviousImage}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all cursor-pointer"
-            aria-label="Previous image"
-          >
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-          <button
-            onClick={goToNextImage}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all cursor-pointer"
-            aria-label="Next image"
-          >
-            <ArrowRight size={20} className="text-white" />
-          </button> */}
         </div>
       </div>
 
@@ -200,10 +205,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
                   <span>Back to Home</span>
                 </button>
               )}
-
-
             </div>
-
             <ThemeToggle />
           </div>
         </div>

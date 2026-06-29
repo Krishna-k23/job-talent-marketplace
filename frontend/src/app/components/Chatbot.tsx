@@ -172,11 +172,11 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     },
     {
       id: 'contracts',
-      label: 'Contracts',
+      label: 'Contacts',
       icon: Briefcase,
-      message: 'I need assistance with contracts',
+      message: 'I need assistance with contacts',
       color: 'from-purple-500 to-purple-600',
-      action: 'contracts',
+      action: 'contacts',
     },
     {
       id: 'billing',
@@ -281,7 +281,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     const vendorResponses: Record<string, string> = {
       requirements: "I can help you with viewing job requirements, tracking submissions, and understanding client needs. Check the Requirements section for available opportunities.",
       resources: "For resources, you can add new talent, manage existing profiles, update availability, and track resource performance from the Resources section.",
-      contracts: "Need help with contracts? You can view active contracts, track billing cycles, check contract details, and manage your vendor agreements from the Contracts page.",
+      contacts: "Need help with contacts? You can view active contacts, track billing cycles, check contact details, and manage your vendor agreements from the Contacts page.",
       billing: "For billing inquiries, you can view your current plan, check payment history, update payment methods, or download invoices from the Billing section.",
       settings: "In Settings, you can update your profile information, change password, manage notification preferences, or configure account settings.",
       support: "Our technical support team is here to help! You can reach us at support@benchbridge.com or call +91-80-1234-5678 (9 AM - 6 PM IST). We typically respond within 2-4 hours.",

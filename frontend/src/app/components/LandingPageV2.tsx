@@ -3,7 +3,7 @@ import { ArrowRight, Users, Briefcase, TrendingUp, Zap, Shield, Bell, BarChart3,
 import { ThemeToggle } from './ThemeToggle';
 import { ScrollToTop } from './ScrollToTop';
 import { Chatbot } from './Chatbot';
-import LogoLight from '../../assets/Logo 3.jpeg';
+import LogoLight from '../../assets/Logo 3.png';
 import LogoDark from '../../assets/Logo 4.png';
 
 interface LandingPageV2Props {

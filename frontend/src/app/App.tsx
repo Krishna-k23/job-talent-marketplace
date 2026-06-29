@@ -1,10 +1,12 @@
-// app.tsx (fixed with proper navigation and no blank tabs)
+// app.tsx - Updated with currentPage prop for Header
 import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { LandingPageV2 } from './components/LandingPageV2';
 import { LoginPage } from './components/LoginPage';
 import { RoleSelectionAfterLogin } from './components/RoleSelectionAfterLogin';
+import { HelpSupport } from './components/HelpSupport';
+import { RoleBasedLoginPage } from './components/RoleBasedLoginPage';
 import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { EnterOTPPage } from './components/EnterOTPPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
@@ -346,30 +348,54 @@ export default function App() {
         console.error('Failed to get user info:', err);
       }
 
+      // FIX: Check if role exists and is valid
+      const userRole = data.role || null;
+
       // Update state
       setIsLoggedIn(true);
-      setShowRoleSelection(true);
+      setUserRole(userRole);
       setAuthFlow('landing');
 
-      if (data.role) {
-        setUserRole(data.role);
+      // If role exists, go directly to dashboard, otherwise show role selection
+      if (userRole) {
+        setShowRoleSelection(false);
+        setActivePage('dashboard');
+
+        // Replace history with dashboard state
+        const newState = {
+          isLoggedIn: true,
+          authFlow: 'landing',
+          activePage: 'dashboard',
+          currentVendorPage: 'dashboard',
+          userRole: userRole,
+          showRoleSelection: false
+        };
+        window.history.replaceState(newState, '', window.location.href);
+      } else {
+        // No role found - show role selection
+        setShowRoleSelection(true);
+
+        const newState = {
+          isLoggedIn: true,
+          authFlow: 'landing',
+          activePage: 'dashboard',
+          currentVendorPage: 'dashboard',
+          userRole: null,
+          showRoleSelection: true
+        };
+        window.history.replaceState(newState, '', window.location.href);
       }
 
-      // Replace history
-      const newState = {
-        isLoggedIn: true,
-        authFlow: 'landing',
-        activePage: 'dashboard',
-        currentVendorPage: 'dashboard',
-        userRole: data.role || null,
-        showRoleSelection: true
-      };
-      window.history.replaceState(newState, '', window.location.href);
-
-      return { success: true, role: data.role };
+      return { success: true, role: userRole };
     } catch (error: any) {
       console.error('Login error:', error);
-      alert(error.message || 'Cannot reach server. Make sure the backend is running on port 8000.');
+
+      // Show specific error message
+      if (error.message.includes('Incorrect email or password')) {
+        alert('Invalid credentials. Please check your email and password.');
+      } else {
+        alert(error.message || 'Cannot reach server. Make sure the backend is running on port 8000.');
+      }
       return { success: false };
     }
   };
@@ -525,7 +551,7 @@ export default function App() {
             />
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -538,7 +564,7 @@ export default function App() {
             <SignupPage onSignup={handleSignupComplete} onBackToLogin={handleBackToLogin} onBackToHome={handleBackToHome} />
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -551,7 +577,7 @@ export default function App() {
             <ForgotPasswordPage onBackToLogin={handleBackToLogin} onSendCode={handleSendResetCode} />
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -563,7 +589,7 @@ export default function App() {
           <div>
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -576,7 +602,7 @@ export default function App() {
             <ResetPasswordPage onBackToLogin={handleBackToLogin} onResetPassword={handleResetPassword} />
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -589,7 +615,7 @@ export default function App() {
             <PasswordResetSuccessPage onBackToLogin={handleBackToLogin} />
             <Chatbot
               isLoggedIn={false}
-              userRole={null}  // ← ADD THIS LINE
+              userRole={null}
               onLoginClick={handleLandingLogin}
               onSignupClick={handleLandingGetStarted}
             />
@@ -609,7 +635,7 @@ export default function App() {
           />
           <Chatbot
             isLoggedIn={true}
-            userRole={null}  // Role not selected yet
+            userRole={null}
             onLoginClick={handleLandingLogin}
             onSignupClick={handleLandingGetStarted}
           />
@@ -634,6 +660,7 @@ export default function App() {
             onSettingsClick={handleSettingsClick}
             sidebarCollapsed={vendorSidebarCollapsed}
             onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            currentPage={currentVendorPage} // ✅ ADD THIS
           />
 
           <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${vendorSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
@@ -649,7 +676,7 @@ export default function App() {
           <ScrollToTop />
           <Chatbot
             isLoggedIn={true}
-            userRole={userRole}  // ← ADD THIS LINE
+            userRole={userRole}
             onLoginClick={handleLandingLogin}
             onSignupClick={handleLandingGetStarted}
           />
@@ -658,6 +685,7 @@ export default function App() {
     }
 
     // Client Portal
+    // In App.tsx, find the client portal render section
     if (userRole === 'client') {
       return (
         <div className="min-h-screen bg-background">
@@ -674,6 +702,7 @@ export default function App() {
             onSettingsClick={handleSettingsClick}
             sidebarCollapsed={isSidebarCollapsed}
             onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            currentPage={activePage}
           />
 
           <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
@@ -701,13 +730,15 @@ export default function App() {
               {activePage === 'resources' && <Resources />}
               {activePage === 'billing' && <Billing />}
               {activePage === 'settings' && <Settings />}
+              {/* ✅ ADD THIS NEW CONDITION */}
+              {activePage === 'help' && <HelpSupport />}
             </div>
           </main>
 
           <ScrollToTop />
           <Chatbot
             isLoggedIn={true}
-            userRole={userRole}  // ← ADD THIS LINE
+            userRole={userRole}
             onLoginClick={handleLandingLogin}
             onSignupClick={handleLandingGetStarted}
           />
