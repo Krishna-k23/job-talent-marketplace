@@ -1,6 +1,7 @@
+// LoginPage.tsx - No Scroll Version
 import { useState, useEffect } from 'react';
 import React from 'react';
-import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, Sparkles, Shield, Building2, Users, CheckCircle } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import Carousel1 from "../../assets/Carousel 1.jpeg";
 import Carousel2 from "../../assets/Carousel 2.jpeg";
@@ -34,6 +35,16 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const remembered = localStorage.getItem('remembered_email');
+    if (remembered) {
+      setEmail(remembered);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Auto-rotate carousel every 5 seconds
   useEffect(() => {
@@ -49,10 +60,8 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
     setError('');
 
     try {
-      // First, call the API to login
       const data = await apiPost('/auth/login', { email, password });
 
-      // Store tokens
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
@@ -63,7 +72,12 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
         sessionStorage.setItem('user', JSON.stringify({ email, role: data.role }));
       }
 
-      // Get user info
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+      } else {
+        localStorage.removeItem('remembered_email');
+      }
+
       try {
         const userData = await apiGet('/users/me');
         localStorage.setItem('user_email', userData.email);
@@ -71,14 +85,10 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
         console.error('Failed to get user info:', err);
       }
 
-      // Call the onLogin prop to update app state
       const result = await onLogin(email, password);
 
-      // Check if login was successful
       if (!result.success) {
-        // If login failed, show error
         setError('Login failed. Please try again.');
-        // Clear any stored tokens since login failed
         localStorage.removeItem('token');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -86,21 +96,17 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
         sessionStorage.removeItem('userRole');
         sessionStorage.removeItem('user');
       }
-      // If success, the app state will handle navigation
 
     } catch (err: any) {
-      // Handle specific error cases from the API
       if (err.response?.status === 401) {
-        // Check if the error message contains registration hint
         if (err.response?.data?.detail?.includes('register')) {
-          setError('No account found with this email. Please register as a client or vendor.');
+          setError('No account found with this email. Please sign up as a client or vendor.');
         } else {
           setError('Invalid email or password. Please try again.');
         }
       } else if (err.message?.includes('Incorrect email or password')) {
         setError('Invalid credentials. Please check your email and password.');
       } else if (err.response?.data?.detail) {
-        // Use the detailed error message from the backend
         setError(err.response.data.detail);
       } else {
         setError(err.message || 'Login failed. Please check your credentials.');
@@ -111,9 +117,9 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       {/* Left Side - Carousel with Constant Text */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center h-full">
         {/* Background Image Carousel */}
         <div className="absolute inset-0">
           {CAROUSEL_IMAGES.map((img, idx) => (
@@ -130,14 +136,13 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
                   (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x600/1a4fa3/ffffff?text=BenchAstra';
                 }}
               />
-              <div className="absolute inset-0 bg-black/50"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/30"></div>
             </div>
           ))}
         </div>
 
         {/* Content overlay - Constant Text */}
         <div className="relative z-10 text-left px-16 max-w-2xl ml-12">
-          {/* Brand Name */}
           {/* Brand Name with Logo */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-white/20 flex-shrink-0">
@@ -159,7 +164,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
             </h2>
           </div>
 
-          {/* Tagline - Multi-line with elegant styling */}
+          {/* Tagline */}
           <div className="mb-4">
             <p className="text-4xl font-bold text-white leading-snug">
               Bridging the gap between <span className="text-emerald-400">talent</span> and demand.
@@ -174,7 +179,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
           </div>
 
           {/* Carousel Navigation Dots */}
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-start gap-2 mt-8">
             {CAROUSEL_IMAGES.map((_, idx) => (
               <button
                 key={idx}
@@ -191,9 +196,9 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 bg-white dark:bg-slate-900 relative overflow-y-auto">
-        {/* Header with Back Button, Logo, and Theme Toggle */}
-        <div className="absolute top-6 left-6 right-6 z-20">
+      <div className="w-full lg:w-1/2 bg-white dark:bg-slate-900 relative overflow-hidden flex flex-col h-full">
+        {/* Header with Back Button and Theme Toggle */}
+        <div className="absolute top-6 left-6 right-6 z-20 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {onBackToHome && (
@@ -210,28 +215,34 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
           </div>
         </div>
 
-        <div className="min-h-screen flex flex-col items-center justify-center py-12 px-6">
+        <div className="flex-1 flex items-center justify-center px-6">
           {/* Login Card */}
-          <div className="w-full max-w-md mt-8">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Shield size={32} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 Welcome Back
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">
-                Sign in to your account
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Sign in to your account to continue
               </p>
             </div>
 
             {error && (
-              <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-                {error}
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-start gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-red-600 dark:text-red-400 text-xs font-bold">!</span>
+                </div>
+                <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Email Address
                 </label>
                 <div className="relative">
@@ -241,7 +252,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder:text-gray-400"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
                     required
                   />
                 </div>
@@ -249,7 +260,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
 
               {/* Password Field with Visibility Toggle */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Password
                 </label>
                 <div className="relative">
@@ -259,7 +270,7 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder:text-gray-400"
+                    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
                     required
                   />
                   <button
@@ -274,19 +285,16 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        localStorage.setItem('remembered_email', email);
-                      } else {
-                        localStorage.removeItem('remembered_email');
-                      }
-                    }}
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors">
+                    Remember me
+                  </span>
                 </label>
                 <button
                   type="button"
@@ -301,21 +309,21 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full cursor-pointer py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full cursor-pointer py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <span>Login</span>
-                    <ArrowRight size={18} />
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
               </button>
             </form>
 
             {/* Sign Up Link */}
-            <div className="mt-6 text-center">
+            <div className="mt-4 text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have an account?{' '}
                 <button
@@ -328,8 +336,24 @@ export function LoginPage({ onLogin, onForgotPassword, onSignup, onBackToHome }:
               </p>
             </div>
 
+            {/* Features */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Building2 size={12} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span>Post Requirements</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="w-5 h-5 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Users size={12} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <span>Find Talent</span>
+              </div>
+            </div>
+
             {/* Terms & Privacy */}
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-8">
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">
               By continuing, you agree to BenchAstra's Terms of Service and Privacy Policy
             </p>
           </div>

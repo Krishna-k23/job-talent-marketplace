@@ -331,7 +331,7 @@ export function Settings() {
 
               <div className="p-6 space-y-5">
                 {/* Avatar */}
-                <div className="flex items-center gap-4">
+                {/* <div className="flex items-center gap-4">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
                       {formData.first_name?.charAt(0)}{formData.last_name?.charAt(0)}
@@ -346,7 +346,7 @@ export function Settings() {
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{formData.designation || 'No designation set'}</p>
                   </div>
-                </div>
+                </div> */}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -575,7 +575,7 @@ export function Settings() {
                   <ChevronRight size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-700/60 hover:border-blue-200 dark:hover:border-blue-800 transition-all cursor-pointer group">
+                {/* <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-700/60 hover:border-blue-200 dark:hover:border-blue-800 transition-all cursor-pointer group">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-purple-100 dark:bg-purple-950/30 rounded-xl flex items-center justify-center">
                       <Lock size={18} className="text-purple-600 dark:text-purple-400" />
@@ -619,7 +619,7 @@ export function Settings() {
                       <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 right-0.5 transition-transform"></div>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           )}

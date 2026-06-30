@@ -145,7 +145,7 @@ class RequirementBase(BaseModel):
     description: Optional[str] = None
 
 class RequirementCreate(RequirementBase):
-    pass
+    custom_start_date: Optional[datetime] = None
 
 class RequirementUpdate(RequirementBase):
     status: Optional[RequirementStatus] = None
@@ -158,6 +158,7 @@ class RequirementResponse(RequirementBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     matches_count: Optional[int] = 0
+    custom_start_date: Optional[datetime] = None
     
     class Config:
         from_attributes = True

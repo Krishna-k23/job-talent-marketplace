@@ -1,4 +1,4 @@
-// RequirementDetailModal.tsx - Ultra Premium Enhanced Version
+// RequirementDetailModal.tsx - Ultra Premium Enhanced Version with Validation
 import { useEffect, useState } from 'react';
 import { 
   X, Edit2, Save, MapPin, Briefcase, DollarSign, Clock, 
@@ -24,6 +24,7 @@ interface ApiRequirement {
   duration?: string;
   work_mode?: string;
   start_date?: string;
+  custom_start_date?: string;
   location?: string;
   description?: string;
   status: string;
@@ -132,6 +133,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
   const [newSkill, setNewSkill] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'skills' | 'matches'>('details');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   const [formData, setFormData] = useState({
     role: requirement.role || '',
@@ -146,8 +148,66 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
     work_mode: requirement.work_mode || 'Hybrid',
     positions: requirement.positions || 1,
     start_date: requirement.start_date || 'Immediate',
+    custom_start_date: requirement.custom_start_date || '',
     status: requirement.status || 'Open',
   });
+
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    let isValid = true;
+
+    // Validate experience_min
+    if (formData.experience_min < 0) {
+      errors.experience_min = 'Minimum experience cannot be negative';
+      isValid = false;
+    }
+
+    // Validate experience_max
+    if (formData.experience_max < 0) {
+      errors.experience_max = 'Maximum experience cannot be negative';
+      isValid = false;
+    }
+
+    // Validate experience range
+    if (formData.experience_min > formData.experience_max && formData.experience_max >= 0) {
+      errors.experience_max = 'Maximum experience must be greater than or equal to minimum';
+      isValid = false;
+    }
+
+    // Validate budget_min
+    if (formData.budget_min < 0) {
+      errors.budget_min = 'Minimum budget cannot be negative';
+      isValid = false;
+    }
+
+    // Validate budget_max
+    if (formData.budget_max < 0) {
+      errors.budget_max = 'Maximum budget cannot be negative';
+      isValid = false;
+    }
+
+    // Validate budget range
+    if (formData.budget_min > formData.budget_max && formData.budget_max >= 0) {
+      errors.budget_max = 'Maximum budget must be greater than or equal to minimum';
+      isValid = false;
+    }
+
+    // Validate positions
+    if (formData.positions < 1) {
+      errors.positions = 'Positions must be at least 1';
+      isValid = false;
+    }
+
+    // Validate role
+    if (!formData.role.trim()) {
+      errors.role = 'Role is required';
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
 
   // Fetch latest requirement details when in edit mode
   useEffect(() => {
@@ -170,6 +230,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
             work_mode: data.work_mode || 'Hybrid',
             positions: data.positions || 1,
             start_date: data.start_date || 'Immediate',
+            custom_start_date: data.custom_start_date || '',
             status: data.status || 'Open',
           });
         }
@@ -185,6 +246,12 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
 
   // Update requirement
   const handleSave = async () => {
+    // Validate before saving
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving');
+      return;
+    }
+
     setLoading(true);
     try {
       const updateData = {
@@ -200,6 +267,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
         work_mode: formData.work_mode,
         positions: formData.positions,
         start_date: formData.start_date,
+        custom_start_date: formData.custom_start_date || null,
         status: formData.status,
       };
 
@@ -211,6 +279,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
       if (response.ok) {
         showSuccess('Requirement updated successfully');
         setIsEditing(false);
+        setValidationErrors({});
         if (onUpdate) onUpdate();
       } else {
         const error = await response.json();
@@ -242,6 +311,26 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
     });
   };
 
+  // Helper function to handle number input with validation
+  const handleNumberChange = (field: keyof typeof formData, value: string) => {
+    const numValue = parseFloat(value);
+    
+    // Allow empty string or valid numbers
+    if (value === '' || !isNaN(numValue)) {
+      const finalValue = value === '' ? 0 : numValue;
+      setFormData({ ...formData, [field]: finalValue });
+      
+      // Clear validation error for this field
+      if (validationErrors[field]) {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
   const workModes = ['Remote', 'Hybrid', 'Onsite'];
   const locations = ['Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad', 'Chennai', 'Kolkata', 'Other'];
   const durations = ['3 Months', '6 Months', '12 Months', '24 Months'];
@@ -256,6 +345,24 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
 
   const getStatusDot = (status: string) => {
     return status === 'Open' ? 'bg-emerald-500' : 'bg-slate-400';
+  };
+
+  // Helper function to format date for display
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
   };
 
   return (
@@ -373,13 +480,29 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                   Role / Position <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base font-medium"
-                    placeholder="Enter role title"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={formData.role}
+                      onChange={(e) => {
+                        setFormData({ ...formData, role: e.target.value });
+                        if (validationErrors.role) {
+                          setValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.role;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                        validationErrors.role ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base font-medium`}
+                      placeholder="Enter role title"
+                    />
+                    {validationErrors.role && (
+                      <p className="text-sm text-red-500 mt-1">{validationErrors.role}</p>
+                    )}
+                  </>
                 ) : (
                   <div className="text-base font-semibold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                     {formData.role || 'Not specified'}
@@ -395,21 +518,51 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                     Experience Required
                   </label>
                   {isEditing ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="number"
-                        value={formData.experience_min}
-                        onChange={(e) => setFormData({ ...formData, experience_min: parseInt(e.target.value) || 0 })}
-                        placeholder="Min"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
-                      <input
-                        type="number"
-                        value={formData.experience_max}
-                        onChange={(e) => setFormData({ ...formData, experience_max: parseInt(e.target.value) || 0 })}
-                        placeholder="Max"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formData.experience_min}
+                            onChange={(e) => handleNumberChange('experience_min', e.target.value)}
+                            onBlur={() => {
+                              if (formData.experience_min < 0) {
+                                setFormData({ ...formData, experience_min: 0 });
+                              }
+                            }}
+                            placeholder="Min"
+                            className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                              validationErrors.experience_min ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                            } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                          />
+                          {validationErrors.experience_min && (
+                            <p className="text-sm text-red-500 mt-1">{validationErrors.experience_min}</p>
+                          )}
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formData.experience_max}
+                            onChange={(e) => handleNumberChange('experience_max', e.target.value)}
+                            onBlur={() => {
+                              if (formData.experience_max < 0) {
+                                setFormData({ ...formData, experience_max: 0 });
+                              }
+                            }}
+                            placeholder="Max"
+                            className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                              validationErrors.experience_max ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                            } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                          />
+                          {validationErrors.experience_max && (
+                            <p className="text-sm text-red-500 mt-1">{validationErrors.experience_max}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-base font-medium text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
@@ -424,21 +577,51 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                     Budget Range (₹)
                   </label>
                   {isEditing ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="number"
-                        value={formData.budget_min}
-                        onChange={(e) => setFormData({ ...formData, budget_min: parseInt(e.target.value) || 0 })}
-                        placeholder="Min"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
-                      <input
-                        type="number"
-                        value={formData.budget_max}
-                        onChange={(e) => setFormData({ ...formData, budget_max: parseInt(e.target.value) || 0 })}
-                        placeholder="Max"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={formData.budget_min}
+                            onChange={(e) => handleNumberChange('budget_min', e.target.value)}
+                            onBlur={() => {
+                              if (formData.budget_min < 0) {
+                                setFormData({ ...formData, budget_min: 0 });
+                              }
+                            }}
+                            placeholder="Min"
+                            className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                              validationErrors.budget_min ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                            } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                          />
+                          {validationErrors.budget_min && (
+                            <p className="text-sm text-red-500 mt-1">{validationErrors.budget_min}</p>
+                          )}
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={formData.budget_max}
+                            onChange={(e) => handleNumberChange('budget_max', e.target.value)}
+                            onBlur={() => {
+                              if (formData.budget_max < 0) {
+                                setFormData({ ...formData, budget_max: 0 });
+                              }
+                            }}
+                            placeholder="Max"
+                            className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                              validationErrors.budget_max ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                            } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                          />
+                          {validationErrors.budget_max && (
+                            <p className="text-sm text-red-500 mt-1">{validationErrors.budget_max}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-base font-medium text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
@@ -456,13 +639,34 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                     Positions
                   </label>
                   {isEditing ? (
-                    <input
-                      type="number"
-                      value={formData.positions}
-                      onChange={(e) => setFormData({ ...formData, positions: parseInt(e.target.value) || 1 })}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      min="1"
-                    />
+                    <>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={formData.positions}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (e.target.value === '' || !isNaN(value)) {
+                            const finalValue = e.target.value === '' ? 1 : Math.max(1, value);
+                            setFormData({ ...formData, positions: finalValue });
+                            if (validationErrors.positions) {
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.positions;
+                                return newErrors;
+                              });
+                            }
+                          }
+                        }}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 ${
+                          validationErrors.positions ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                        } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                      />
+                      {validationErrors.positions && (
+                        <p className="text-sm text-red-500 mt-1">{validationErrors.positions}</p>
+                      )}
+                    </>
                   ) : (
                     <div className="text-base font-medium text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                       {formData.positions} position{formData.positions !== 1 ? 's' : ''}
@@ -545,7 +749,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                 </div>
               </div>
 
-              {/* Start Date & Status */}
+              {/* Start Date & Status - ENHANCED with custom date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/30 rounded-2xl p-5 border border-slate-200/60 dark:border-slate-700/60">
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -553,18 +757,45 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                     Start Date
                   </label>
                   {isEditing ? (
-                    <select
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      {startDates.map(date => (
-                        <option key={date} value={date}>{date}</option>
-                      ))}
-                    </select>
+                    <div className="space-y-3">
+                      <select
+                        value={formData.start_date}
+                        onChange={(e) => {
+                          setFormData({ 
+                            ...formData, 
+                            start_date: e.target.value,
+                            custom_start_date: e.target.value === 'Custom' ? formData.custom_start_date : ''
+                          });
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      >
+                        {startDates.map(date => (
+                          <option key={date} value={date}>{date}</option>
+                        ))}
+                      </select>
+                      
+                      {/* Show custom date input when 'Custom' is selected */}
+                      {formData.start_date === 'Custom' && (
+                        <input
+                          type="date"
+                          value={formData.custom_start_date || ''}
+                          onChange={(e) => setFormData({ ...formData, custom_start_date: e.target.value })}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-purple-300 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      )}
+                    </div>
                   ) : (
                     <div className="text-base font-medium text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                      {formData.start_date || 'Not specified'}
+                      {formData.start_date === 'Custom' && formData.custom_start_date ? (
+                        <div className="flex items-center gap-2">
+                          <Calendar size={16} className="text-purple-500" />
+                          <span className="text-purple-600 dark:text-purple-400 font-semibold">
+                            {formatDateForDisplay(formData.custom_start_date)}
+                          </span>
+                        </div>
+                      ) : (
+                        formData.start_date || 'Not specified'
+                      )}
                     </div>
                   )}
                 </div>
@@ -754,6 +985,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
               <button
                 onClick={() => {
                   setIsEditing(false);
+                  setValidationErrors({});
                   // Reset form data to original
                   setFormData({
                     role: requirement.role || '',
@@ -768,6 +1000,7 @@ export function RequirementDetailModal({ requirement, onClose, mode = 'view', on
                     work_mode: requirement.work_mode || 'Hybrid',
                     positions: requirement.positions || 1,
                     start_date: requirement.start_date || 'Immediate',
+                    custom_start_date: requirement.custom_start_date || '',
                     status: requirement.status || 'Open',
                   });
                 }}

@@ -1,7 +1,7 @@
-// Requirements.tsx - Premium Enhanced Version
+// Requirements.tsx - Premium Enhanced Version with Date Fix
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Eye, Edit2, Trash2, Download, Upload, Plus, Search, 
+import {
+  Eye, Edit2, Trash2, Download, Upload, Plus, Search,
   CheckSquare, Square, Trash, Loader2, X, ChevronRight,
   Filter, Calendar, Briefcase, DollarSign, MapPin, Clock,
   Sparkles, Layers, Zap, TrendingUp, Award, FileText,
@@ -19,6 +19,7 @@ interface RequirementsProps {
 }
 
 interface ApiRequirement {
+  custom_start_date: string;
   id: number;
   requirement_id: string;
   role: string;
@@ -51,6 +52,43 @@ function formatBudget(min?: number, max?: number): string {
   if (min != null && max != null) return `₹${min.toLocaleString()}–₹${max.toLocaleString()}`;
   if (min != null) return `₹${min.toLocaleString()}+`;
   return 'N/A';
+}
+
+// Helper function to format start date properly
+function formatStartDate(startDate?: string, customStartDate?: string): string {
+  if (startDate === 'Pick Date' && customStartDate) {
+    try {
+      let dateObj = null;
+      
+      // If it's a timestamp (number), convert it
+      if (!isNaN(Number(customStartDate))) {
+        dateObj = new Date(Number(customStartDate));
+      }
+      // If it contains T or -, it's likely ISO format
+      else if (customStartDate.includes('T') || customStartDate.includes('-')) {
+        dateObj = new Date(customStartDate);
+      } 
+      // Try adding T00:00:00 to make it a valid ISO string
+      else {
+        dateObj = new Date(customStartDate + 'T00:00:00');
+      }
+      
+      // Check if date is valid
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      // If all parsing fails, return the raw value
+      return customStartDate;
+    } catch (e) {
+      return customStartDate || 'Invalid Date';
+    }
+  }
+  return startDate || 'N/A';
 }
 
 // Token refresh function
@@ -264,7 +302,6 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
   };
 
   // Filtered and sorted requirements
-  // Filtered and sorted requirements
   const filteredRequirements = useMemo(() => {
     let filtered = requirements.filter((req) => {
       if (!searchQuery) return true;
@@ -415,6 +452,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       'duration',
       'work_mode',
       'start_date',
+      'custom_start_date',
       'location',
       'description'
     ];
@@ -429,7 +467,8 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
       '150000',
       '12 Months',
       'Hybrid',
-      'Immediate',
+      'Pick Date',
+      '2026-07-15',
       'Bangalore',
       'Looking for experienced DevOps engineer'
     ];
@@ -458,14 +497,6 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
     closed: requirements.filter(r => r.status === 'Closed').length,
     matches: requirements.reduce((sum, r) => sum + (r.matches_count || 0), 0)
   };
-
-  // Get time-based greeting
-  // const getGreeting = () => {
-  //   const hour = new Date().getHours();
-  //   if (hour < 12) return 'Good morning';
-  //   if (hour < 17) return 'Good afternoon';
-  //   return 'Good evening';
-  // };
 
   return (
     <div className="space-y-6">
@@ -583,9 +614,6 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
               <Sparkles size={18} className="text-yellow-300 animate-pulse" />
               <span className="text-blue-100 text-xs font-medium">Requirements Management</span>
             </div>
-            {/* <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              {getGreeting()}, {localStorage.getItem('userName')?.split('@')[0] || 'User'} 🚀
-            </h1> */}
             <p className="text-blue-100 text-sm mt-0.5 flex items-center gap-2">
               <FileText size={14} />
               <span>Manage and track all your job requirements in one place</span>
@@ -648,8 +676,8 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                 key={s}
                 onClick={() => { setStatusFilter(s); setCurrentPage(1); }}
                 className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${statusFilter === s
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
               >
                 {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -784,6 +812,7 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Experience</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Budget</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Start Date</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Matches</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
@@ -839,11 +868,20 @@ export function Requirements({ onViewMatches, onCreateNew }: RequirementsProps) 
                         {formatBudget(req.budget_min, req.budget_max)}
                       </div>
                     </td>
+                    {/* FIXED: Start Date column with proper date formatting */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+                        <Calendar size={14} className="text-purple-500" />
+                        <span className={req.start_date === 'Pick Date' && req.custom_start_date ? 'font-medium text-purple-600 dark:text-purple-400' : ''}>
+                          {formatStartDate(req.start_date, req.custom_start_date)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full border ${req.status === 'Open'
-                            ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-                            : 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                          ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                          : 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                           }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${req.status === 'Open' ? 'bg-amber-500' : 'bg-emerald-500'

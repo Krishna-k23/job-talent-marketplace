@@ -198,15 +198,15 @@ export function VendorDashboard({ onNavigate }: VendorDashboardProps) {
       description: 'In progress',
       gradient: 'from-purple-500 to-pink-600'
     },
-    { 
-      label: 'Monthly Revenue', 
-      value: `₹${(stats.monthly_revenue / 1000).toFixed(1)}L`, 
-      icon: DollarSign, 
-      bgColor: 'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-      description: 'This month',
-      gradient: 'from-amber-500 to-orange-600'
-    },
+    // { 
+    //   label: 'Monthly Revenue', 
+    //   value: `₹${(stats.monthly_revenue / 1000).toFixed(1)}L`, 
+    //   icon: DollarSign, 
+    //   bgColor: 'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
+    //   iconColor: 'text-amber-600 dark:text-amber-400',
+    //   description: 'This month',
+    //   gradient: 'from-amber-500 to-orange-600'
+    // },
   ];
 
   const currentData = trendData;
@@ -256,10 +256,10 @@ export function VendorDashboard({ onNavigate }: VendorDashboardProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl text-white">
+            {/* <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl text-white">
               <Crown size={16} className="text-yellow-300" />
               <span className="text-sm font-medium">Vendor Pro</span>
-            </div>
+            </div> */}
             <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl text-white">
               <Award size={16} className="text-yellow-300" />
               <span className="text-sm font-medium">Top Rated</span>
@@ -279,10 +279,10 @@ export function VendorDashboard({ onNavigate }: VendorDashboardProps) {
               <div className={`w-12 h-12 rounded-xl bg-white/60 dark:bg-slate-800/60 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                 <stat.icon size={24} className={stat.iconColor} strokeWidth={2} />
               </div>
-              <div className="flex items-center gap-1 text-sm font-medium text-emerald-600 bg-white/60 dark:bg-slate-800/60 px-2.5 py-1 rounded-full">
+              {/* <div className="flex items-center gap-1 text-sm font-medium text-emerald-600 bg-white/60 dark:bg-slate-800/60 px-2.5 py-1 rounded-full">
                 <TrendingUp size={14} />
                 <span>+12%</span>
-              </div>
+              </div> */}
             </div>
             <div>
               <div className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">

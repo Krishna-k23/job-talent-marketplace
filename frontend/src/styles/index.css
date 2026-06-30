@@ -95,3 +95,41 @@ input:-webkit-autofill:active {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* Custom scrollbar for recent activity */
+.recent-activity-scroll {
+  max-height: 120px; /* Adjust as needed */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.recent-activity-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.recent-activity-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-activity-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+}
+
+.recent-activity-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark mode support */
+.dark .recent-activity-scroll {
+  scrollbar-color: #475569 transparent;
+}
+
+.dark .recent-activity-scroll::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark .recent-activity-scroll::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}

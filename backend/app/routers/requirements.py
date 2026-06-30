@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -13,6 +15,7 @@ import re
 import time
 
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
+
 
 @router.post("/bulk-upload")
 async def bulk_upload_requirements(
@@ -33,16 +36,14 @@ async def bulk_upload_requirements(
         df.columns = df.columns.str.strip()
         
         requirements_created = []
-        # Use a set to track generated IDs to avoid duplicates
         used_ids = set()
         
         for _, row in df.iterrows():
-            # Helper function to safely get value
             def safe_get(key, default=None):
                 val = row.get(key, default)
                 return default if pd.isna(val) else val
             
-            # Parse skills - handle both comma-separated and list format
+            # Parse skills
             skills_val = safe_get('skills', '')
             if isinstance(skills_val, str):
                 skills = [s.strip() for s in skills_val.split(',') if s.strip()]
@@ -94,11 +95,37 @@ async def bulk_upload_requirements(
             location = safe_get('location', '')
             description = safe_get('description', '')
             
-            # Generate unique requirement_id with retry logic
+            # NEW: Parse custom_start_date if provided
+            custom_start_date = None
+            custom_start_date_val = safe_get('custom_start_date')
+            if custom_start_date_val:
+                try:
+                    # Try to parse as datetime
+                    if isinstance(custom_start_date_val, (pd.Timestamp, datetime)):
+                        custom_start_date = custom_start_date_val
+                        if isinstance(custom_start_date_val, pd.Timestamp):
+                            custom_start_date = custom_start_date_val.to_pydatetime()
+                    elif isinstance(custom_start_date_val, str):
+                        # Try multiple date formats
+                        date_formats = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']
+                        for fmt in date_formats:
+                            try:
+                                custom_start_date = datetime.strptime(custom_start_date_val, fmt)
+                                break
+                            except ValueError:
+                                continue
+                        if not custom_start_date:
+                            # Fallback: try pandas to_datetime
+                            custom_start_date = pd.to_datetime(custom_start_date_val).to_pydatetime()
+                except Exception as e:
+                    print(f"Error parsing date: {e}")
+                    custom_start_date = None
+            
+            # Generate unique requirement_id
             req_id = generate_unique_id(used_ids)
             used_ids.add(req_id)
             
-            # Create requirement
+            # Create requirement with custom_start_date
             requirement = Requirement(
                 requirement_id=req_id,
                 client_id=current_user.id,
@@ -111,7 +138,8 @@ async def bulk_upload_requirements(
                 budget_max=budget_max,
                 duration=str(duration),
                 work_mode=str(work_mode),
-                start_date=str(start_date),
+                start_date=str(start_date) if start_date else 'Immediate',
+                custom_start_date=custom_start_date,  # ADD THIS LINE
                 location=str(location) if location else None,
                 description=str(description) if description else None,
                 status="Open"
@@ -119,14 +147,12 @@ async def bulk_upload_requirements(
             db.add(requirement)
             requirements_created.append(requirement)
         
-        # Commit in batches to avoid memory issues
         db.commit()
         
-        # Generate matches for each requirement
+        # Generate matches
         for req in requirements_created:
             match_resources(req, db)
         
-        # Commit matches
         db.commit()
         
         return {"message": f"Successfully created {len(requirements_created)} requirements", "count": len(requirements_created)}

@@ -149,7 +149,23 @@ export function VendorContracts() {
     }
   };
 
-  useEffect(() => { fetchContracts(); }, []);
+  // Initial fetch on mount
+  useEffect(() => { 
+    fetchContracts(); 
+  }, []);
+
+  // ADD THIS: Event listener for contract updates
+  // This will refresh the contracts list when a contract is updated elsewhere
+  useEffect(() => {
+    const handleContractUpdate = () => {
+      fetchContracts();
+    };
+    window.addEventListener('contractsUpdated', handleContractUpdate);
+    
+    return () => {
+      window.removeEventListener('contractsUpdated', handleContractUpdate);
+    };
+  }, []);
 
   const handleStatusUpdate = async (contractId: number, status: string) => {
     try {
@@ -166,6 +182,9 @@ export function VendorContracts() {
           setSelectedContract({ ...selectedContract, status: status as ApiContract['status'] });
         }
         setShowEditModal(false);
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('contractsUpdated'));
       } else {
         const error = await response.json();
         showError(error.detail || 'Failed to update contract status');
@@ -208,6 +227,9 @@ export function VendorContracts() {
         setShowEditModal(false);
         setEditingContract(null);
         fetchContracts();
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('contractsUpdated'));
       } else {
         const error = await response.json();
         showError(error.detail || 'Failed to update contract');

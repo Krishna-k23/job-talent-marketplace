@@ -1,12 +1,12 @@
-// VendorResources.tsx - Ultra Premium Enhanced Version with Select All
-import { useEffect, useState } from 'react';
+// VendorResources.tsx - Updated with Resume Upload
+import { useEffect, useState, useRef } from 'react';
 import {
   Search, Download, Plus, Eye, Edit2, Trash2, X, Upload,
   Loader2, CheckSquare, Square, Trash, FileSpreadsheet,
   Sparkles, Layers, Zap, Award, Users, Filter, ChevronDown,
   ChevronUp, Clock, MapPin, DollarSign, Mail, Phone, Briefcase,
   Tag, UserCircle, Activity, Star, TrendingUp, Shield,
-  FileText
+  FileText, File, FileCheck, AlertCircle
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import * as XLSX from 'xlsx';
@@ -27,6 +27,7 @@ interface Resource {
   summary: string;
   skills: string[];
   status: 'Available' | 'Busy' | 'On Leave';
+  resume_url?: string;
 }
 
 interface FormErrors {
@@ -39,6 +40,7 @@ interface FormErrors {
   email?: string;
   phone?: string;
   skills?: string;
+  resume?: string;
 }
 
 const ITEMS_PER_PAGE = 8;
@@ -73,6 +75,11 @@ export function VendorResources() {
   const [summary, setSummary] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeFileName, setResumeFileName] = useState('');
+  const [resumePreview, setResumePreview] = useState<string | null>(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
 
@@ -117,6 +124,7 @@ export function VendorResources() {
         'Authorization': `Bearer ${retryToken || token}`
       };
 
+      // Don't set Content-Type for FormData - browser will set it with boundary
       if (!(options.body instanceof FormData)) {
         headers['Content-Type'] = 'application/json';
       }
@@ -171,7 +179,8 @@ export function VendorResources() {
           phone: resource.phone || '',
           summary: resource.summary || '',
           skills: resource.skills || [],
-          status: resource.status || 'Available'
+          status: resource.status || 'Available',
+          resume_url: resource.resume_url || null
         }));
         setResources(mappedResources);
         setSelectedIds(new Set());
@@ -188,7 +197,7 @@ export function VendorResources() {
     fetchResources();
   }, []);
 
-  // Filter resources based on search query and status
+  // Filter resources
   const filteredResources = resources.filter((resource) => {
     const matchesSearch =
       resource.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -201,7 +210,7 @@ export function VendorResources() {
     return matchesSearch && matchesStatus;
   });
 
-  // Validate form
+  // Validate form with file validation
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
     let isValid = true;
@@ -216,9 +225,15 @@ export function VendorResources() {
       isValid = false;
     }
 
-    if (!experience || parseInt(experience) < 0) {
-      newErrors.experience = 'Please enter a valid experience';
+    if (!experience) {
+      newErrors.experience = 'Experience is required';
       isValid = false;
+    } else {
+      const expNum = Number(experience);
+      if (isNaN(expNum) || expNum < 0) {
+        newErrors.experience = 'Please enter a valid experience (0 or greater)';
+        isValid = false;
+      }
     }
 
     if (!availability) {
@@ -226,9 +241,15 @@ export function VendorResources() {
       isValid = false;
     }
 
-    if (!baseRate || parseFloat(baseRate) <= 0) {
-      newErrors.base_rate = 'Please enter a valid base rate';
+    if (!baseRate) {
+      newErrors.base_rate = 'Base rate is required';
       isValid = false;
+    } else {
+      const rateNum = Number(baseRate);
+      if (isNaN(rateNum) || rateNum <= 0) {
+        newErrors.base_rate = 'Please enter a valid base rate (greater than 0)';
+        isValid = false;
+      }
     }
 
     if (!location.trim()) {
@@ -250,8 +271,70 @@ export function VendorResources() {
       }
     }
 
+    // Resume validation (only for add, not required but if provided must be valid)
+    if (resumeFile) {
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(resumeFile.type)) {
+        newErrors.resume = 'Please upload a PDF or Word document';
+        isValid = false;
+      } else if (resumeFile.size > maxSize) {
+        newErrors.resume = 'File size must be less than 5MB';
+        isValid = false;
+      }
+    }
+
     setErrors(newErrors);
     return isValid;
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        showError('Please upload a PDF or Word document');
+        e.target.value = '';
+        return;
+      }
+
+      if (file.size > maxSize) {
+        showError('File size must be less than 5MB');
+        e.target.value = '';
+        return;
+      }
+
+      setResumeFile(file);
+      setResumeFileName(file.name);
+
+      // Create preview URL for PDF
+      if (file.type === 'application/pdf') {
+        const url = URL.createObjectURL(file);
+        setResumePreview(url);
+      } else {
+        setResumePreview(null);
+      }
+
+      // Clear error if any
+      if (errors.resume) {
+        setErrors({ ...errors, resume: undefined });
+      }
+    }
+  };
+
+  // Remove resume file
+  const handleRemoveResume = () => {
+    setResumeFile(null);
+    setResumeFileName('');
+    setResumePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Add skill
@@ -275,68 +358,126 @@ export function VendorResources() {
     }
   };
 
-  // Add resource
+  // Handle number input
+  const handleNumberChange = (field: 'experience' | 'baseRate', value: string) => {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      const numValue = Number(value);
+      if (value === '' || numValue >= 0) {
+        if (field === 'experience') {
+          setExperience(value);
+          if (errors.experience) setErrors({ ...errors, experience: undefined });
+        } else {
+          setBaseRate(value);
+          if (errors.base_rate) setErrors({ ...errors, base_rate: undefined });
+        }
+      }
+    }
+  };
+
+  // Add resource with resume
+  // Add resource with resume
   const handleAddResource = async () => {
-    if (!validateForm()) return;
+    console.log('🔵 handleAddResource called');
+    console.log('📝 Form data:', {
+      resourceName,
+      skillDomain,
+      experience,
+      availability,
+      baseRate,
+      location,
+      email,
+      phone,
+      summary,
+      selectedSkills,
+      resumeFile: resumeFile?.name
+    });
+
+    // Validate form
+    const isValid = validateForm();
+    console.log('✅ Form validation result:', isValid);
+    console.log('❌ Validation errors:', errors);
+
+    if (!isValid) {
+      console.log('⚠️ Form validation failed, returning early');
+      return;
+    }
 
     try {
+      console.log('🔄 Creating FormData...');
+      const formData = new FormData();
+      formData.append('name', resourceName);
+      formData.append('skill_domain', skillDomain);
+      formData.append('experience', `${experience} yrs`);
+      formData.append('experience_years', experience || '0');
+      formData.append('availability', availability);
+      formData.append('availability_days', '0');
+      formData.append('base_rate', baseRate);
+      formData.append('location', location);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('summary', summary);
+      formData.append('skills', JSON.stringify(selectedSkills));
+      formData.append('status', 'Available');
+
+      if (resumeFile) {
+        console.log('📄 Adding resume file:', resumeFile.name);
+        formData.append('resume', resumeFile);
+      }
+
+      console.log('🚀 Sending request to /api/resources/');
       const response = await fetchWithAuth('/api/resources/', {
         method: 'POST',
-        body: JSON.stringify({
-          name: resourceName,
-          skill_domain: skillDomain,
-          experience: experience,
-          experience_years: parseInt(experience) || 0,
-          availability: availability,
-          base_rate: parseFloat(baseRate) || 0,
-          location: location,
-          email: email,
-          phone: phone,
-          summary: summary,
-          skills: selectedSkills,
-          status: 'Available'
-        }),
+        body: formData,
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
       if (response.ok) {
+        console.log('✅ Resource added successfully');
         showSuccess('Resource added successfully!');
         setShowAddModal(false);
         resetForm();
         fetchResources();
       } else {
         const error = await response.json();
+        console.error('❌ Error response:', error);
         showError(error.detail || 'Failed to add resource');
       }
     } catch (error) {
-      console.error('Error adding resource:', error);
+      console.error('❌ Error adding resource:', error);
       showError('Failed to add resource');
     }
   };
 
-  // Update resource
+  // Update resource with resume - Integrated approach
   const handleUpdateResource = async () => {
     if (!editingResource || !validateForm()) return;
 
     try {
-      const experienceYears = parseInt(experience) || 0;
+      const formData = new FormData();
+      formData.append('name', resourceName);
+      formData.append('skill_domain', skillDomain);
+      formData.append('experience', `${experience} yrs`);
+      formData.append('experience_years', experience || '0');
+      formData.append('availability', availability);
+      formData.append('availability_days', '0');
+      formData.append('base_rate', baseRate);
+      formData.append('location', location);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('summary', summary);
+      formData.append('skills', JSON.stringify(selectedSkills));
+      formData.append('status', editingResource.status || 'Available');
 
-      const updateData = {
-        name: resourceName,
-        skill_domain: skillDomain,
-        experience: `${experienceYears} yrs`,
-        experience_years: experienceYears,
-        availability: availability,
-        base_rate: parseFloat(baseRate) || 0,
-        location: location,
-        email: email || '',
-        phone: phone || '',
-        summary: summary || '',
-        skills: selectedSkills,
-      };
+      if (resumeFile) {
+        formData.append('resume', resumeFile);
+      }
 
+      // Send to /api/resources/{id} (NOT /api/upload/resume)
       const response = await fetchWithAuth(`/api/resources/${editingResource.id}`, {
         method: 'PUT',
-        body: JSON.stringify(updateData),
+        body: formData,
       });
 
       if (response.ok) {
@@ -378,7 +519,7 @@ export function VendorResources() {
     }
   };
 
-  // Bulk delete selected resources
+  // Bulk delete
   const handleBulkDelete = async () => {
     try {
       const ids = Array.from(selectedIds);
@@ -399,7 +540,7 @@ export function VendorResources() {
     }
   };
 
-  // Download roster as Excel
+  // Download roster
   const handleDownloadRoster = () => {
     try {
       const data = filteredResources.map((resource, index) => ({
@@ -415,7 +556,8 @@ export function VendorResources() {
         'Phone': resource.phone,
         'Skills': resource.skills?.join(', ') || '',
         'Status': resource.status,
-        'Summary': resource.summary || ''
+        'Summary': resource.summary || '',
+        'Resume': resource.resume_url ? 'Uploaded' : 'Not uploaded'
       }));
 
       const ws = XLSX.utils.json_to_sheet(data);
@@ -425,7 +567,8 @@ export function VendorResources() {
       const colWidths = [
         { wch: 6 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
         { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 15 },
-        { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 40 }
+        { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 12 },
+        { wch: 40 }, { wch: 15 }
       ];
       ws['!cols'] = colWidths;
 
@@ -458,7 +601,54 @@ export function VendorResources() {
     setSummary('');
     setSelectedSkills([]);
     setSkillInput('');
+    setResumeFile(null);
+    setResumeFileName('');
+    setResumePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setErrors({});
+  };
+
+  // Download resume/CV
+  const handleDownloadResume = async (resumeUrl: string) => {
+    try {
+      console.log('📥 Downloading resume from:', resumeUrl);
+
+      // Fetch the file with authentication
+      const response = await fetchWithAuth(resumeUrl, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download resume: ${response.status}`);
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Extract filename from URL or use default
+      const filename = resumeUrl.split('/').pop() || 'resume.pdf';
+      link.download = filename;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      window.URL.revokeObjectURL(url);
+
+      showSuccess('Resume downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading resume:', error);
+      showError('Failed to download resume. Please try again.');
+    }
   };
 
   const handleViewDetails = (resource: Resource) => {
@@ -480,6 +670,12 @@ export function VendorResources() {
     setSummary(resource.summary);
     setSelectedSkills(resource.skills || []);
     setSkillInput('');
+    setResumeFile(null);
+    setResumeFileName('');
+    setResumePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setErrors({});
     setShowEditModal(true);
   };
@@ -501,11 +697,9 @@ export function VendorResources() {
   const handleSearch = (q: string) => {
     setSearchQuery(q);
     setCurrentPage(1);
-    // Clear selections when searching
     setSelectedIds(new Set());
   };
-  
-  // Selection handlers (now paginatedResources is defined)
+
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
@@ -516,7 +710,6 @@ export function VendorResources() {
     setSelectedIds(newSelected);
   };
 
-  // Select all on current page
   const toggleSelectAll = () => {
     const currentPageIds = paginatedResources.map(r => r.id);
     const allCurrentPageSelected = currentPageIds.every(id => selectedIds.has(id));
@@ -532,7 +725,6 @@ export function VendorResources() {
     }
   };
 
-  // Select all resources across all pages
   const handleSelectAllPages = () => {
     if (selectedIds.size === filteredResources.length) {
       setSelectedIds(new Set());
@@ -541,7 +733,6 @@ export function VendorResources() {
       setSelectedIds(allIds);
     }
   };
-
 
   const getStatusColor = (status: string) => {
     if (status === 'Available') return 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
@@ -554,6 +745,84 @@ export function VendorResources() {
     if (status === 'Busy') return 'bg-amber-500';
     return 'bg-red-500';
   };
+
+  // Helper to get file icon
+  const getFileIcon = (filename: string) => {
+    if (!filename) return <File size={16} />;
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return <FileText size={16} className="text-red-500" />;
+    if (ext === 'doc' || ext === 'docx') return <FileText size={16} className="text-blue-500" />;
+    return <File size={16} />;
+  };
+
+  // Resume upload component (reusable)
+  const ResumeUploadField = ({ required = false }: { required?: boolean }) => (
+    <div>
+      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+        <FileText size={14} className="inline mr-1.5 text-emerald-500" />
+        Resume/CV {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="resume-upload"
+          />
+          <label
+            htmlFor="resume-upload"
+            className={`flex-1 cursor-pointer px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed ${errors.resume ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'} rounded-xl hover:border-emerald-500 dark:hover:border-emerald-400 transition-all text-center`}
+          >
+            <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
+              <Upload size={18} />
+              <span className="text-sm">{resumeFileName || 'Click to upload resume'}</span>
+            </div>
+          </label>
+          {resumeFileName && (
+            <button
+              onClick={handleRemoveResume}
+              className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors text-red-500"
+              title="Remove resume"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        {resumeFileName && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+            {getFileIcon(resumeFileName)}
+            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate flex-1">
+              {resumeFileName}
+            </span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+              {(resumeFile?.size || 0) > 1024 * 1024
+                ? `${((resumeFile?.size || 0) / (1024 * 1024)).toFixed(1)} MB`
+                : `${((resumeFile?.size || 0) / 1024).toFixed(0)} KB`}
+            </span>
+          </div>
+        )}
+        {resumePreview && (
+          <div className="mt-2">
+            <iframe
+              src={resumePreview}
+              className="w-full h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+              title="Resume Preview"
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 text-center">
+              PDF Preview - {resumeFileName}
+            </p>
+          </div>
+        )}
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Accepted formats: PDF, DOC, DOCX (Max 5MB)
+        </p>
+        {errors.resume && <p className="text-xs text-red-500">{errors.resume}</p>}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -586,7 +855,7 @@ export function VendorResources() {
             </h1>
             <p className="text-emerald-100 text-sm mt-0.5 flex items-center gap-2">
               <Users size={14} />
-              <span>Manage all bench resources</span>
+              <span>Manage all bench resources with resumes</span>
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -595,7 +864,10 @@ export function VendorResources() {
               <span className="text-sm font-medium">{resources.length} Resources</span>
             </div>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                resetForm();
+                setShowAddModal(true);
+              }}
               className="px-4 py-2 bg-white text-emerald-600 rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 font-medium text-sm"
             >
               <Plus size={16} />
@@ -619,13 +891,12 @@ export function VendorResources() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* ✅ NEW: Select All Pages Button */}
           {filteredResources.length > 0 && (
             <button
               onClick={handleSelectAllPages}
               className={`px-3 py-2 rounded-xl transition-all text-sm font-medium flex items-center gap-1.5 ${selectedIds.size === filteredResources.length
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               title={selectedIds.size === filteredResources.length ? "Deselect all" : "Select all"}
             >
@@ -654,7 +925,6 @@ export function VendorResources() {
             Roster
           </button>
 
-          {/* ✅ NEW: Bulk Delete Button - Shows when items are selected */}
           {selectedIds.size > 0 && (
             <button
               onClick={() => setShowBulkDeleteModal(true)}
@@ -667,7 +937,7 @@ export function VendorResources() {
         </div>
       </div>
 
-      {/* ✅ NEW: Selection Info Bar */}
+      {/* Selection Info Bar */}
       {selectedIds.size > 0 && (
         <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -727,8 +997,11 @@ export function VendorResources() {
             {searchQuery ? `No resources matching "${searchQuery}"` : 'Add your first resource to get started'}
           </p>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className="px-4 py-2 bg-white text-emerald-600 rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 font-medium text-sm"
           >
             <Plus size={16} />
             Add Resource
@@ -736,7 +1009,6 @@ export function VendorResources() {
         </div>
       ) : (
         <>
-          {/* ✅ UPDATED: Header with Select All checkbox */}
           <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-xl border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
             <div className="px-6 py-3 border-b border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -760,17 +1032,15 @@ export function VendorResources() {
               </div>
             </div>
 
-            {/* Resource Cards Grid - Enhanced */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 p-5">
               {paginatedResources.map((resource) => (
                 <div
                   key={resource.id}
                   className={`group bg-white dark:bg-slate-800/80 rounded-2xl p-5 border transition-all duration-300 relative ${selectedIds.has(resource.id)
-                      ? 'border-emerald-400 dark:border-emerald-600 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/20'
-                      : 'border-slate-200/60 dark:border-slate-700/60 hover:shadow-2xl hover:-translate-y-1 hover:border-emerald-200 dark:hover:border-emerald-800'
+                    ? 'border-emerald-400 dark:border-emerald-600 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200/60 dark:border-slate-700/60 hover:shadow-2xl hover:-translate-y-1 hover:border-emerald-200 dark:hover:border-emerald-800'
                     }`}
                 >
-                  {/* Selection Checkbox */}
                   <div className="absolute top-3 left-3">
                     <button
                       onClick={() => toggleSelect(resource.id)}
@@ -784,7 +1054,6 @@ export function VendorResources() {
                     </button>
                   </div>
 
-                  {/* Status Badge */}
                   <div className="absolute top-3 right-3">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border ${getStatusColor(resource.status)}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(resource.status)}`}></span>
@@ -801,6 +1070,12 @@ export function VendorResources() {
                         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
                           {resource.resource_id || resource.id}
                         </span>
+                        {resource.resume_url && (
+                          <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <FileCheck size={10} />
+                            Resume
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 truncate">
                         {resource.name}
@@ -874,6 +1149,18 @@ export function VendorResources() {
                       <Eye size={15} />
                       View Profile
                     </button>
+                    {resource.resume_url && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadResume(resource.resume_url!);
+                        }}
+                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                        title="Download Resume"
+                      >
+                        <Download size={16} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEdit(resource)}
                       className="p-2 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400"
@@ -928,8 +1215,8 @@ export function VendorResources() {
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
                         className={`px-3 py-2 cursor-pointer text-sm rounded-lg font-semibold transition-colors ${pageNum === currentPage
-                            ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                          ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                           }`}
                       >
                         {pageNum}
@@ -950,18 +1237,18 @@ export function VendorResources() {
         </>
       )}
 
-      {/* Modals - Same as before */}
-      {/* Add Resource Modal */}
+      {/* ENHANCED: Add Resource Modal with Resume Upload */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 p-6 rounded-t-3xl">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 p-6 rounded-t-3xl flex-shrink-0">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
               <div className="relative flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-white">Add Resource</h3>
-                  <p className="text-emerald-100 text-sm mt-1">Add a new resource to your bench</p>
+                  <p className="text-emerald-100 text-sm mt-1">Add a new resource with resume</p>
                 </div>
                 <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
                   <X size={24} className="text-white" />
@@ -969,8 +1256,8 @@ export function VendorResources() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              {/* Form fields - same as before */}
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   <UserCircle size={14} className="inline mr-1.5 text-emerald-500" />
@@ -1017,11 +1304,15 @@ export function VendorResources() {
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    step="0.5"
                     placeholder="Years"
                     value={experience}
                     onChange={(e) => {
-                      setExperience(e.target.value);
-                      if (errors.experience) setErrors({ ...errors, experience: undefined });
+                      const value = e.target.value;
+                      if (value === '' || (Number(value) >= 0 && !value.includes('-'))) {
+                        handleNumberChange('experience', value);
+                      }
                     }}
                     className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.experience ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
                       } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
@@ -1035,11 +1326,15 @@ export function VendorResources() {
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     placeholder="₹/mo"
                     value={baseRate}
                     onChange={(e) => {
-                      setBaseRate(e.target.value);
-                      if (errors.base_rate) setErrors({ ...errors, base_rate: undefined });
+                      const value = e.target.value;
+                      if (value === '' || (Number(value) >= 0 && !value.includes('-'))) {
+                        handleNumberChange('baseRate', value);
+                      }
                     }}
                     className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.base_rate ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
                       } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
@@ -1132,6 +1427,9 @@ export function VendorResources() {
                 </div>
               </div>
 
+              {/* Resume Upload Field */}
+              <ResumeUploadField />
+
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   <Tag size={14} className="inline mr-1.5 text-emerald-500" />
@@ -1184,25 +1482,26 @@ export function VendorResources() {
                   className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
                 />
               </div>
+            </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <button onClick={() => setShowAddModal(false)} className="flex-1 px-6 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium">
-                  Cancel
-                </button>
-                <button onClick={handleAddResource} className="flex-1 cursor-pointer px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-600/30 font-medium">
-                  Add Resource
-                </button>
-              </div>
+            {/* Footer */}
+            <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex gap-3 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-3xl">
+              <button onClick={() => setShowAddModal(false)} className="flex-1 px-6 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium">
+                Cancel
+              </button>
+              <button onClick={handleAddResource} className="flex-1 cursor-pointer px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-600/30 font-medium">
+                Add Resource
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal with Resume Upload */}
       {showEditModal && editingResource && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" onClick={() => setShowEditModal(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 p-6 rounded-t-3xl">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 p-6 rounded-t-3xl flex-shrink-0">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
               <div className="relative flex items-center justify-between">
@@ -1216,17 +1515,253 @@ export function VendorResources() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              {/* Same form fields as Add Modal but with values populated */}
-              {/* ... (form fields same as add modal) ... */}
-              <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <button onClick={() => setShowEditModal(false)} className="flex-1 px-6 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium">
-                  Cancel
-                </button>
-                <button onClick={handleUpdateResource} className="flex-1 cursor-pointer px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-600/30 font-medium">
-                  Update Resource
-                </button>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Same form fields as Add Modal with values populated */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <UserCircle size={14} className="inline mr-1.5 text-emerald-500" />
+                  Resource Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter resource name"
+                  value={resourceName}
+                  onChange={(e) => {
+                    setResourceName(e.target.value);
+                    if (errors.name) setErrors({ ...errors, name: undefined });
+                  }}
+                  className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.name ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                />
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <Briefcase size={14} className="inline mr-1.5 text-emerald-500" />
+                  Skill Domain <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Full Stack Developer"
+                  value={skillDomain}
+                  onChange={(e) => {
+                    setSkillDomain(e.target.value);
+                    if (errors.skill_domain) setErrors({ ...errors, skill_domain: undefined });
+                  }}
+                  className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.skill_domain ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                />
+                {errors.skill_domain && <p className="text-xs text-red-500 mt-1">{errors.skill_domain}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <Clock size={14} className="inline mr-1.5 text-emerald-500" />
+                    Experience <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    placeholder="Years"
+                    value={experience}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || (Number(value) >= 0 && !value.includes('-'))) {
+                        handleNumberChange('experience', value);
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.experience ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  />
+                  {errors.experience && <p className="text-xs text-red-500 mt-1">{errors.experience}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <DollarSign size={14} className="inline mr-1.5 text-emerald-500" />
+                    Base Rate <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="₹/mo"
+                    value={baseRate}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || (Number(value) >= 0 && !value.includes('-'))) {
+                        handleNumberChange('baseRate', value);
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.base_rate ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  />
+                  {errors.base_rate && <p className="text-xs text-red-500 mt-1">{errors.base_rate}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <Activity size={14} className="inline mr-1.5 text-emerald-500" />
+                    Availability <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={availability}
+                    onChange={(e) => {
+                      setAvailability(e.target.value);
+                      if (errors.availability) setErrors({ ...errors, availability: undefined });
+                    }}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.availability ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  >
+                    <option value="">Select availability</option>
+                    <option value="Immediate">Immediate</option>
+                    <option value="15 days">15 days</option>
+                    <option value="30 days">30 days</option>
+                    <option value="60+ days">60+ days</option>
+                  </select>
+                  {errors.availability && <p className="text-xs text-red-500 mt-1">{errors.availability}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <MapPin size={14} className="inline mr-1.5 text-emerald-500" />
+                    Location <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Bangalore"
+                    value={location}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      if (errors.location) setErrors({ ...errors, location: undefined });
+                    }}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.location ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  />
+                  {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <Mail size={14} className="inline mr-1.5 text-emerald-500" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors({ ...errors, email: undefined });
+                    }}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  />
+                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <Phone size={14} className="inline mr-1.5 text-emerald-500" />
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="10-digit number"
+                    value={phone}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^+\d]/g, '');
+                      setPhone(value);
+                      if (errors.phone) setErrors({ ...errors, phone: undefined });
+                    }}
+                    maxLength={13}
+                    className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 ${errors.phone ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'
+                      } rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                  />
+                  {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                </div>
+              </div>
+
+              {/* Resume Upload Field for Edit */}
+              <ResumeUploadField />
+
+              {editingResource.resume_url && !resumeFile && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <FileCheck size={16} className="text-blue-500" />
+                  <span className="text-sm text-blue-700 dark:text-blue-400">
+                    Current resume: {editingResource.resume_url.split('/').pop()}
+                  </span>
+                  <span className="text-xs text-blue-500 dark:text-blue-400 ml-auto">
+                    Upload new to replace
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <Tag size={14} className="inline mr-1.5 text-emerald-500" />
+                  Skills
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g., AWS, Docker, Kubernetes"
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyPress={handleSkillKeyPress}
+                    className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  />
+                  <button
+                    onClick={handleAddSkill}
+                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedSkills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-medium border border-emerald-200 dark:border-emerald-800"
+                    >
+                      {skill}
+                      <button
+                        onClick={() => handleRemoveSkill(skill)}
+                        className="hover:text-red-500 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <FileText size={14} className="inline mr-1.5 text-emerald-500" />
+                  Summary
+                </label>
+                <textarea
+                  placeholder="Enter summary"
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex gap-3 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-3xl">
+              <button onClick={() => setShowEditModal(false)} className="flex-1 px-6 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium">
+                Cancel
+              </button>
+              <button onClick={handleUpdateResource} className="flex-1 cursor-pointer px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-600/30 font-medium">
+                Update Resource
+              </button>
             </div>
           </div>
         </div>
@@ -1244,6 +1779,9 @@ export function VendorResources() {
               <p className="text-slate-600 dark:text-slate-400 mb-6">
                 Are you sure you want to delete <br />
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedResource.name}</span>?
+                {selectedResource.resume_url && (
+                  <span className="block mt-1 text-sm text-red-500">This will also delete the uploaded resume.</span>
+                )}
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setShowDeleteModal(false)} className="flex-1 px-6 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium">
@@ -1285,7 +1823,7 @@ export function VendorResources() {
         </div>
       )}
 
-      {/* Details Modal */}
+      {/* Details Modal with Resume Display */}
       {showDetailsModal && selectedResource && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" onClick={() => setShowDetailsModal(false)}>
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -1303,7 +1841,7 @@ export function VendorResources() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
                   {selectedResource.name.split(' ').map((n: string) => n[0]).join('')}
@@ -1332,6 +1870,27 @@ export function VendorResources() {
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedResource.location}</div>
                 </div>
               </div>
+
+              {selectedResource.resume_url && (
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileCheck size={16} className="text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Resume/CV</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-600 dark:text-blue-400 truncate flex-1">
+                      {selectedResource.resume_url.split('/').pop()}
+                    </span>
+                    <button
+                      onClick={() => handleDownloadResume(selectedResource.resume_url!)}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ml-2 flex-shrink-0"
+                    >
+                      <Download size={12} />
+                      Download CV
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">Skills</div>

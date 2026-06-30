@@ -1,10 +1,11 @@
-// Dashboard.tsx - No Scroll, Dynamic Layout
+// Dashboard.tsx - No Scroll, Dynamic Layout with Pagination
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown, 
-  MapPin, Target, Plus, Upload, ArrowRight, Activity, 
-  X, Download, Loader2, Sparkles, ChevronRight, Calendar, 
-  CheckCircle, BarChart3, PieChart, Layers, Zap, Award
+import {
+  Users, FileText, DollarSign, Clock, TrendingUp, TrendingDown,
+  MapPin, Target, Plus, Upload, ArrowRight, Activity,
+  X, Download, Loader2, Sparkles, ChevronRight, Calendar,
+  CheckCircle, BarChart3, PieChart, Layers, Zap, Award,
+  ChevronLeft
 } from 'lucide-react';
 import { PostRequirement } from './PostRequirement';
 import { useToast } from '../contexts/ToastContext';
@@ -31,7 +32,8 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [visibleRequirements, setVisibleRequirements] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6; // 2 rows x 3 columns = 6 items, or 2 rows x 2 columns = 4 items
   const containerRef = useRef<HTMLDivElement>(null);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
@@ -128,10 +130,11 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
 
   const fetchRequirements = async () => {
     try {
-      const response = await fetchWithAuth('/api/requirements/?limit=12');
+      const response = await fetchWithAuth('/api/requirements/?limit=50');
       if (response.ok) {
         const data = await response.json();
         setRequirements(data);
+        setCurrentPage(1); // Reset to first page when data changes
 
         const roleCounts: Record<string, number> = {};
         data.forEach((req: any) => {
@@ -150,22 +153,12 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
           status: req.status
         }));
         setRecentActivity(activities);
-        
-        // Calculate visible requirements based on container height
-        calculateVisibleItems(data.length);
       }
     } catch (error) {
       console.error('Failed to fetch requirements:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const calculateVisibleItems = (total: number) => {
-    // Adjust visible items based on total to fill space without scrolling
-    if (total <= 3) setVisibleRequirements(total);
-    else if (total <= 6) setVisibleRequirements(6);
-    else setVisibleRequirements(9);
   };
 
   const fetchUser = async () => {
@@ -185,11 +178,6 @@ export function Dashboard({ onViewMatches }: DashboardProps) {
     fetchRequirements();
     fetchUser();
   }, []);
-
-  // Update visible items when requirements change
-  useEffect(() => {
-    calculateVisibleItems(requirements.length);
-  }, [requirements]);
 
   const handleAddRequirement = () => {
     setShowPostRequirement(true);
@@ -280,51 +268,47 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
   };
 
   const summaryStats = [
-    { 
-      label: 'Total Requirements', 
-      value: stats.totalRequirements.toString(), 
-      trend: '+12%', 
-      trendUp: true, 
-      icon: FileText, 
+    {
+      label: 'Total Requirements',
+      value: stats.totalRequirements.toString(),
+      trendUp: true,
+      icon: FileText,
       gradient: 'from-blue-500 to-indigo-600',
       bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20',
-      iconBg: 'bg-blue-500/20', 
+      iconBg: 'bg-blue-500/20',
       iconColor: 'text-blue-500',
       description: 'All time requirements'
     },
-    { 
-      label: 'Open Positions', 
-      value: stats.openRequirements.toString(), 
-      trend: '+8%', 
-      trendUp: true, 
-      icon: Target, 
+    {
+      label: 'Open Positions',
+      value: stats.openRequirements.toString(),
+      trendUp: true,
+      icon: Target,
       gradient: 'from-amber-500 to-orange-600',
       bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20',
-      iconBg: 'bg-amber-500/20', 
+      iconBg: 'bg-amber-500/20',
       iconColor: 'text-amber-500',
       description: 'Currently active'
     },
-    { 
-      label: 'Closed Positions', 
-      value: stats.closedRequirements.toString(), 
-      trend: '+4', 
-      trendUp: true, 
-      icon: CheckCircle, 
+    {
+      label: 'Closed Positions',
+      value: stats.closedRequirements.toString(),
+      trendUp: true,
+      icon: CheckCircle,
       gradient: 'from-emerald-500 to-green-600',
       bgGradient: 'from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20',
-      iconBg: 'bg-emerald-500/20', 
+      iconBg: 'bg-emerald-500/20',
       iconColor: 'text-emerald-500',
       description: 'Successfully filled'
     },
-    { 
-      label: 'Matching Profiles', 
-      value: stats.totalMatchingProfiles.toString(), 
-      trend: '+15%', 
-      trendUp: true, 
-      icon: Users, 
+    {
+      label: 'Matching Profiles',
+      value: stats.totalMatchingProfiles.toString(),
+      trendUp: true,
+      icon: Users,
       gradient: 'from-purple-500 to-pink-600',
       bgGradient: 'from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20',
-      iconBg: 'bg-purple-500/20', 
+      iconBg: 'bg-purple-500/20',
       iconColor: 'text-purple-500',
       description: 'Best matches found'
     },
@@ -334,6 +318,18 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
     if (statusFilter === 'all') return true;
     return req.status?.toLowerCase() === statusFilter;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRequirements.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = filteredRequirements.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const maxRoleCount = Math.max(...requirementsByRole.map(r => r.count), 1);
 
@@ -447,15 +443,15 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                       </div>
                     )}
                   </div>
-                  
-                  <button 
-                    onClick={handleDownloadTemplate} 
+
+                  <button
+                    onClick={handleDownloadTemplate}
                     className="w-full py-3 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:underline flex items-center justify-center gap-2 transition-all"
                   >
                     <Download size={16} />
                     Download CSV Template
                   </button>
-                  
+
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => {
@@ -486,7 +482,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
       <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-5 shadow-2xl flex-shrink-0">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
-        
+
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -497,19 +493,19 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               {getGreeting()}, {userName} 👋
             </h1>
             <p className="text-blue-100 text-sm mt-0.5 flex items-center gap-2">
-              <Activity size={14} /> 
+              <Activity size={14} />
               <span>Here's what's happening with your requirements today</span>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button 
+            <button
               onClick={handleAddRequirement}
               className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all duration-300 flex items-center gap-2 font-medium border border-white/20 text-sm hover:scale-105"
             >
               <Plus size={16} />
               Add New
             </button>
-            <button 
+            <button
               onClick={() => setShowBulkUpload(true)}
               className="px-4 py-2 bg-white text-blue-600 rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 font-medium text-sm"
             >
@@ -523,17 +519,13 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
       {/* Summary Cards - Compact */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
         {summaryStats.map((stat, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className={`group bg-gradient-to-br ${stat.bgGradient} rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5`}
           >
             <div className="flex items-start justify-between mb-2">
               <div className={`w-10 h-10 rounded-xl ${stat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                 <stat.icon size={20} className={stat.iconColor} strokeWidth={2} />
-              </div>
-              <div className={`flex items-center gap-0.5 text-xs font-medium ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'} bg-white/60 dark:bg-slate-800/60 px-2 py-0.5 rounded-full`}>
-                {stat.trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                <span>{stat.trend}</span>
               </div>
             </div>
             <div>
@@ -558,34 +550,36 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                 ({filteredRequirements.length} total)
               </span>
             </h2>
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1 border border-slate-200/60 dark:border-slate-700/50">
-              {(['all', 'open', 'closed'] as const).map((filter) => (
-                <button 
-                  key={filter} 
-                  onClick={() => setStatusFilter(filter)} 
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 ${
-                    statusFilter === filter 
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30' 
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1 border border-slate-200/60 dark:border-slate-700/50">
+                {(['all', 'open', 'closed'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setStatusFilter(filter);
+                      setCurrentPage(1); // Reset to first page on filter change
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300 ${statusFilter === filter
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/50'
-                  }`}
-                >
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
-              ))}
+                      }`}
+                  >
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Requirements Grid - Takes remaining height with overflow-hidden */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <div className={`grid grid-cols-1 md:grid-cols-2 ${
-              filteredRequirements.length > 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-2'
-            } gap-3 h-full`}>
-              {filteredRequirements.slice(0, visibleRequirements).map((req, index) => (
-                <div 
-                  key={req.id} 
-                  className="group bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 flex flex-col"
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${currentItems.length > 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-2'} gap-3 h-full`}>
+              {currentItems.map((req, index) => (
+                <div
+                  key={req.id}
+                  className="group bg-white dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 flex flex-col"
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start justify-between mb-1.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-full">
                         {req.requirement_id || req.id}
@@ -594,19 +588,18 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                         {req.role}
                       </h3>
                     </div>
-                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
-                      req.status === 'Open' 
-                        ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200' 
-                        : 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200'
-                    }`}>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${req.status === 'Open'
+                      ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200'
+                      : 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200'
+                      }`}>
                       {req.status}
                     </span>
                   </div>
-                  
-                  <div className="space-y-1.5 mb-2 flex-1">
+
+                  <div className="space-y-1 mb-1.5 flex-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <Clock size={12} className="text-blue-500" /> 
+                        <Clock size={12} className="text-blue-500" />
                         Exp
                       </span>
                       <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -615,7 +608,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <DollarSign size={12} className="text-emerald-500" /> 
+                        <DollarSign size={12} className="text-emerald-500" />
                         Budget
                       </span>
                       <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
@@ -624,7 +617,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <MapPin size={12} className="text-purple-500" /> 
+                        <MapPin size={12} className="text-purple-500" />
                         Location
                       </span>
                       <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
@@ -632,8 +625,8 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                       </span>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-1 mb-2">
+
+                  <div className="flex flex-wrap gap-1 mb-1.5">
                     {req.skills?.slice(0, 2).map((skill: string, idx: number) => (
                       <span key={idx} className="px-2 py-0.5 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] font-medium border border-blue-100 dark:border-blue-800 truncate max-w-[70px]">
                         {skill}
@@ -645,24 +638,24 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                       </span>
                     )}
                   </div>
-                  
-                  <button 
-                    onClick={() => onViewMatches?.(req.id, req.matches_count || 0)} 
-                    className="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 group hover:shadow-lg hover:shadow-blue-500/30 text-xs"
+
+                  <button
+                    onClick={() => onViewMatches?.(req.id, req.matches_count || 0)}
+                    className="w-full py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 group hover:shadow-lg hover:shadow-blue-500/30 text-xs"
                   >
                     <span>View {req.matches_count || 0} Profiles</span>
                     <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               ))}
-              
+
               {/* Empty state - fill remaining space with placeholder cards if needed */}
               {filteredRequirements.length === 0 && (
                 <div className="col-span-full flex items-center justify-center p-8 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                   <div className="text-center">
                     <FileText size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
                     <p className="text-slate-500 dark:text-slate-400">No requirements found</p>
-                    <button 
+                    <button
                       onClick={handleAddRequirement}
                       className="mt-3 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
                     >
@@ -673,17 +666,83 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               )}
             </div>
           </div>
+
+          {/* Pagination - Only show if more than itemsPerPage */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-4 pt-2 pb-1 flex-shrink-0">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredRequirements.length)} of {filteredRequirements.length}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <ChevronLeft size={16} className="text-slate-600 dark:text-slate-300" />
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`w-8 h-8 text-xs font-medium rounded-lg transition-all duration-200 ${currentPage === pageNum
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                          }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <>
+                      <span className="text-slate-400 dark:text-slate-500">...</span>
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        className="w-8 h-8 text-xs font-medium rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <ChevronRight size={16} className="text-slate-600 dark:text-slate-300" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar - Compact */}
         <div className="flex flex-col gap-3 overflow-hidden">
           {/* Quick Stats Widget */}
           <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-4 text-white shadow-xl flex-shrink-0">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <Award size={16} className="text-blue-200" />
               <span className="text-blue-100 text-xs font-medium">Performance</span>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex justify-between items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
                 <span className="text-blue-100 text-xs">Match Rate</span>
                 <span className="font-bold text-base">
@@ -705,38 +764,38 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
 
           {/* Quick Actions */}
           <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-2">
               <Zap size={16} className="text-blue-600" />
               Quick Actions
             </h3>
-            <div className="space-y-2">
-              <button 
-                onClick={handleAddRequirement} 
-                className="w-full flex items-center gap-2 p-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 group"
+            <div className="space-y-1.5">
+              <button
+                onClick={handleAddRequirement}
+                className="w-full flex items-center gap-2 p-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 group"
               >
-                <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Plus size={14} />
                 </div>
                 <span className="font-semibold flex-1 text-left text-xs">Add Requirement</span>
                 <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
-              
-              <button 
-                onClick={() => setShowBulkUpload(true)} 
-                className="w-full flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
+
+              <button
+                onClick={() => setShowBulkUpload(true)}
+                className="w-full flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
               >
-                <div className="w-7 h-7 bg-blue-100 dark:bg-blue-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-6 h-6 bg-blue-100 dark:bg-blue-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Upload size={14} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <span className="font-semibold flex-1 text-left text-xs text-slate-700 dark:text-slate-300">Bulk Upload</span>
                 <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
               </button>
-              
-              <button 
-                onClick={handleDownloadTemplate} 
-                className="w-full flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
+
+              <button
+                onClick={handleDownloadTemplate}
+                className="w-full flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all duration-300 group"
               >
-                <div className="w-7 h-7 bg-emerald-100 dark:bg-emerald-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-950/30 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <span className="font-semibold flex-1 text-left text-xs text-slate-700 dark:text-slate-300">Template</span>
@@ -751,9 +810,9 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               <PieChart size={16} className="text-blue-600" />
               Status Distribution
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div>
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between mb-0.5">
                   <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 inline-block"></span>
                     Open
@@ -761,14 +820,14 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{stats.openRequirements}</span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-1000" 
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-1000"
                     style={{ width: `${stats.totalRequirements ? (stats.openRequirements / stats.totalRequirements) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
               <div>
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between mb-0.5">
                   <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-green-500 inline-block"></span>
                     Closed
@@ -776,8 +835,8 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{stats.closedRequirements}</span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-1000" 
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-1000"
                     style={{ width: `${stats.totalRequirements ? (stats.closedRequirements / stats.totalRequirements) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -792,20 +851,25 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
           </div>
 
           {/* Recent Activity - Compact */}
-          <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0 max-h-[120px] overflow-hidden">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-2">
+          <div className="bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-lg flex-shrink-0">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-1.5">
               <Activity size={16} className="text-blue-600" />
               Recent Activity
+              {recentActivity.length > 2 && (
+                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500 ml-auto">
+                  {recentActivity.length} activities
+                </span>
+              )}
             </h3>
-            <div className="space-y-1.5">
+            <div className="recent-activity-scroll space-y-1 pr-1">
               {recentActivity.length > 0 ? (
-                recentActivity.slice(0, 2).map((activity, idx) => (
+                recentActivity.map((activity, idx) => (
                   <div key={idx} className="flex items-start gap-2 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-lg transition-colors">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center flex-shrink-0">
+                    <div className="w-5 h-5 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center flex-shrink-0">
                       {activity.status === 'Open' ? (
-                        <Plus size={12} className="text-blue-600" />
+                        <Plus size={11} className="text-blue-600" />
                       ) : (
-                        <CheckCircle size={12} className="text-emerald-600" />
+                        <CheckCircle size={11} className="text-emerald-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -822,7 +886,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">
                   No recent activity
                 </p>
               )}
@@ -849,17 +913,17 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               </span>
             </div>
           </div>
-          
+
           <div className="flex flex-wrap items-end justify-center gap-4 min-h-[80px]">
             {requirementsByRole.map((data, index) => {
               const percentage = (data.count / maxRoleCount) * 100;
               const color = roleColors[index % roleColors.length];
               const barHeight = Math.max(percentage, 15);
-              
+
               return (
                 <div key={index} className="flex flex-col items-center gap-1.5 min-w-[40px] flex-1 max-w-[80px]">
                   <div className="w-full flex flex-col justify-end h-[60px] group">
-                    <div 
+                    <div
                       className={`w-full bg-gradient-to-t ${color} rounded-md relative transition-all duration-500 hover:opacity-80 cursor-pointer`}
                       style={{ height: `${barHeight}%` }}
                     >
@@ -876,7 +940,7 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               );
             })}
           </div>
-          
+
           {/* Legend for bar chart */}
           <div className="flex flex-wrap items-center justify-center gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
             {requirementsByRole.slice(0, 4).map((data, index) => {

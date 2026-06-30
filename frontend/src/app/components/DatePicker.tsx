@@ -1,3 +1,4 @@
+// DatePicker.tsx - Fixed date selection issue
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -8,12 +9,14 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(value ? new Date(value) : null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(value ? new Date(value + 'T00:00:00') : null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
     if (value) {
-      setSelectedDate(new Date(value));
+      // Parse the date without timezone offset
+      const [year, month, day] = value.split('-').map(Number);
+      setSelectedDate(new Date(year, month - 1, day));
     }
   }, [value]);
 
@@ -39,9 +42,17 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
   };
 
   const handleDateSelect = (day: number) => {
+    // Create date in local timezone without offset
     const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     setSelectedDate(newDate);
-    onChange(newDate.toISOString().split('T')[0]);
+    
+    // Format as YYYY-MM-DD without timezone conversion
+    const year = currentMonth.getFullYear();
+    const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${dayStr}`;
+    
+    onChange(formattedDate);
   };
 
   const handlePrevMonth = () => {
@@ -77,7 +88,8 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
         <button
           type="button"
           onClick={handlePrevMonth}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all cursor-pointer"
+          disabled={disabled}
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={20} className="text-slate-700 dark:text-slate-300" />
         </button>
@@ -87,7 +99,8 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
         <button
           type="button"
           onClick={handleNextMonth}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all cursor-pointer"
+          disabled={disabled}
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRight size={20} className="text-slate-700 dark:text-slate-300" />
         </button>
@@ -110,7 +123,12 @@ export function DatePicker({ value, onChange, disabled }: DatePickerProps) {
               <button
                 type="button"
                 onClick={() => handleDateSelect(day)}
-                className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                disabled={disabled}
+                className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${
+                  disabled 
+                    ? 'cursor-not-allowed opacity-50' 
+                    : 'cursor-pointer'
+                } ${
                   isSelected(day)
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                     : isToday(day)
