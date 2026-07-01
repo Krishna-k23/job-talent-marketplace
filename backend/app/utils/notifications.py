@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import Notification
+from app.models.models import Notification
 
 def create_notification(db: Session, user_id: int, title: str, message: str, type: str = "system", related_id: int = None):
     """Create a notification for a user"""
@@ -16,7 +16,7 @@ def create_notification(db: Session, user_id: int, title: str, message: str, typ
 
 def create_match_notification(db: Session, requirement_id: int, resource_id: int, match_score: int):
     """Create notifications for both client and vendor when a match is found"""
-    from app.models import Requirement, Resource
+    from app.models.models import Requirement, Resource
     
     requirement = db.query(Requirement).filter(Requirement.id == requirement_id).first()
     resource = db.query(Resource).filter(Resource.id == resource_id).first()

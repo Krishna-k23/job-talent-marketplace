@@ -577,18 +577,18 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
               {currentItems.map((req, index) => (
                 <div
                   key={req.id}
-                  className="group bg-white dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 flex flex-col"
+                  className="group bg-white dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800 flex flex-col"
                 >
-                  <div className="flex items-start justify-between mb-1.5">
+                  <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-full">
+                      <div className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block truncate max-w-full">
                         {req.requirement_id || req.id}
                       </div>
-                      <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
+                      <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 truncate">
                         {req.role}
                       </h3>
                     </div>
-                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${req.status === 'Open'
+                    <span className={`ml-2 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${req.status === 'Open'
                       ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200'
                       : 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200'
                       }`}>
@@ -596,44 +596,44 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                     </span>
                   </div>
 
-                  <div className="space-y-1 mb-1.5 flex-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <Clock size={12} className="text-blue-500" />
+                  <div className="space-y-1.5 mb-2 flex-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <Clock size={14} className="text-blue-500" />
                         Exp
                       </span>
                       <span className="font-semibold text-slate-700 dark:text-slate-300">
                         {req.experience_min}-{req.experience_max}y
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <DollarSign size={12} className="text-emerald-500" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <DollarSign size={14} className="text-emerald-500" />
                         Budget
                       </span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm truncate">
                         ₹{req.budget_min?.toLocaleString()}-{req.budget_max?.toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <MapPin size={12} className="text-purple-500" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <MapPin size={14} className="text-purple-500" />
                         Location
                       </span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm truncate">
                         {req.location || 'Remote'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-1 mb-1.5">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     {req.skills?.slice(0, 2).map((skill: string, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] font-medium border border-blue-100 dark:border-blue-800 truncate max-w-[70px]">
+                      <span key={idx} className="px-2.5 py-1 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium border border-blue-100 dark:border-blue-800 truncate max-w-[80px]">
                         {skill}
                       </span>
                     ))}
                     {req.skills?.length > 2 && (
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full text-[9px] font-medium">
+                      <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full text-xs font-medium">
                         +{req.skills.length - 2}
                       </span>
                     )}
@@ -641,10 +641,10 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
 
                   <button
                     onClick={() => onViewMatches?.(req.id, req.matches_count || 0)}
-                    className="w-full py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 group hover:shadow-lg hover:shadow-blue-500/30 text-xs"
+                    className="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300 group hover:shadow-lg hover:shadow-blue-500/30 text-sm"
                   >
                     <span>View {req.matches_count || 0} Profiles</span>
-                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               ))}
@@ -700,8 +700,8 @@ Java Developer,7,10,1,"Java,Spring Boot,Microservices",120000,180000,12 Months,R
                         key={pageNum}
                         onClick={() => goToPage(pageNum)}
                         className={`w-8 h-8 text-xs font-medium rounded-lg transition-all duration-200 ${currentPage === pageNum
-                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                           }`}
                       >
                         {pageNum}

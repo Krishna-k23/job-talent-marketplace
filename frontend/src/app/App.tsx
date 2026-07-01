@@ -1,7 +1,8 @@
-// app.tsx - Updated with currentPage prop for Header
+// app.tsx - Updated with Admin and Super Admin support
 import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { AdminProvider } from './contexts/AdminContext';
 import { LandingPageV2 } from './components/LandingPageV2';
 import { LoginPage } from './components/LoginPage';
 import { RoleSelectionAfterLogin } from './components/RoleSelectionAfterLogin';
@@ -30,6 +31,23 @@ import { Chatbot } from './components/Chatbot';
 import { apiPost, apiGet, isTokenExpired, getToken, clearAuthData } from '@/config/api';
 import '../styles/index.css';
 
+// Admin Imports
+import AdminDashboard from '../app/admin/AdminDashboard';
+import AdminUsers from '../app/admin/AdminUsers';
+import AdminResources from '../app/admin/AdminResources';
+import AdminRequirements from '../app/admin/AdminRequirements';
+import AdminAnalytics from '../app/admin/AdminAnalytics';
+import AdminSettings from '../app/admin/AdminSettings';
+import AdminSidebar from '../app/admin/components/AdminSidebar';
+
+// Super Admin Imports
+import SuperAdminDashboard from '../app/superadmin/SuperAdminDashboard';
+import SuperAdminUsers from '../app/superadmin/SuperAdminUsers';
+import SuperAdminSystem from '../app/superadmin/SuperAdminSystem';
+import SuperAdminPayments from '../app/superadmin/SuperAdminPayments';
+import SuperAdminSidebar from '../app/superadmin/components/SuperAdminSidebar';
+import SuperAdminSettings from '../app/superadmin/SuperAdminSettings';
+
 type AuthFlow = 'landing' | 'login' | 'signup' | 'forgot-password' | 'enter-otp' | 'reset-password' | 'password-reset-success';
 
 interface NavState {
@@ -37,16 +55,18 @@ interface NavState {
   authFlow: AuthFlow;
   activePage: string;
   currentVendorPage: 'dashboard' | 'resources' | 'contracts';
-  userRole: 'vendor' | 'client' | null;
+  userRole: 'vendor' | 'client' | 'admin' | 'super_admin' | null;
   showRoleSelection: boolean;
 }
 
-// Wrapper component that provides both Theme and Toast contexts
+// Wrapper component that provides Theme, Toast, and Admin contexts
 function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <ToastProvider>
-        {children}
+        <AdminProvider>
+          {children}
+        </AdminProvider>
       </ToastProvider>
     </ThemeProvider>
   );
@@ -88,14 +108,14 @@ export default function App() {
     authFlow: AuthFlow;
     activePage: string;
     currentVendorPage: 'dashboard' | 'resources' | 'contracts';
-    userRole: 'vendor' | 'client' | null;
+    userRole: 'vendor' | 'client' | 'admin' | 'super_admin' | null;
     showRoleSelection: boolean;
     userEmail: string;
   } => {
     // Check token first
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     const savedState = loadStateFromLocalStorage();
-    const savedRole = localStorage.getItem('user_role') as 'vendor' | 'client' | null;
+    const savedRole = localStorage.getItem('user_role') as 'vendor' | 'client' | 'admin' | 'super_admin' | null;
 
     if (token && savedState && savedState.isLoggedIn) {
       // User was logged in before refresh
@@ -150,7 +170,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(initialState.isLoggedIn);
   const [authFlow, setAuthFlow] = useState<AuthFlow>(initialState.authFlow);
   const [resetEmail, setResetEmail] = useState('');
-  const [userRole, setUserRole] = useState<'vendor' | 'client' | null>(initialState.userRole);
+  const [userRole, setUserRole] = useState<'vendor' | 'client' | 'admin' | 'super_admin' | null>(initialState.userRole);
   const [showRoleSelection, setShowRoleSelection] = useState(initialState.showRoleSelection);
   const [activePage, setActivePage] = useState(initialState.activePage);
   const [showPostRequirement, setShowPostRequirement] = useState(false);
@@ -162,6 +182,16 @@ export default function App() {
   const [userEmail, setUserEmail] = useState(initialState.userEmail);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+
+  // Admin state
+  const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false);
+  const [adminMobileSidebarOpen, setAdminMobileSidebarOpen] = useState(false);
+  const [adminActivePage, setAdminActivePage] = useState('dashboard');
+  
+  // Super Admin state
+  const [superAdminSidebarCollapsed, setSuperAdminSidebarCollapsed] = useState(false);
+  const [superAdminMobileSidebarOpen, setSuperAdminMobileSidebarOpen] = useState(false);
+  const [superAdminActivePage, setSuperAdminActivePage] = useState('dashboard');
 
   const navRef = useRef<NavState>({
     isLoggedIn: initialState.isLoggedIn,
@@ -192,7 +222,6 @@ export default function App() {
 
       if (!e.state) {
         if (isAuth) {
-          // Don't redirect, just prevent
           return;
         }
         return;
@@ -200,18 +229,14 @@ export default function App() {
 
       const s = e.state as NavState;
 
-      // If authenticated and trying to go to auth pages, prevent it
       if (isAuth && (s.authFlow === 'login' || s.authFlow === 'signup' || s.authFlow === 'landing' || s.authFlow === 'forgot-password')) {
-        // Don't do anything, just return
         return;
       }
 
-      // If authenticated and trying to go to role selection when role already selected
       if (isAuth && s.showRoleSelection === true && userRole !== null) {
         return;
       }
 
-      // Update state from history
       const loggedIn = s.isLoggedIn && isAuth;
       setIsLoggedIn(loggedIn);
       setAuthFlow(loggedIn ? (s.authFlow ?? 'landing') : 'landing');
@@ -293,53 +318,46 @@ export default function App() {
     setTimeout(() => setIsNavigating(false), 100);
   };
 
-  // Add this helper function in App.tsx (around line 80)
   const isTokenValid = (): boolean => {
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) return false;
 
     try {
-      // Decode the JWT token to check expiry
       const payload = JSON.parse(atob(token.split('.')[1]));
       const exp = payload.exp;
       if (exp) {
         const now = Math.floor(Date.now() / 1000);
         return now < exp;
       }
-      return true; // If no exp, assume valid
+      return true;
     } catch (e) {
       return false;
     }
   };
 
-  // Update the useEffect that checks authentication
   useEffect(() => {
     if (isLoggedIn) {
       if (!isAuthenticated() || !isTokenValid()) {
         handleLogout();
-        setAuthFlow('login'); // Redirect to login page
+        setAuthFlow('login');
       }
     }
   }, [isLoggedIn]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      // Use apiPost instead of fetch
       const data = await apiPost('/auth/login', { email, password });
 
-      // Store tokens
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
 
-      // Store the role from the response
       if (data.role) {
         localStorage.setItem('user_role', data.role);
         sessionStorage.setItem('userRole', data.role);
         sessionStorage.setItem('user', JSON.stringify({ email, role: data.role }));
       }
 
-      // Get user info using apiGet
       try {
         const userData = await apiGet('/users/me');
         setUserEmail(userData.email);
@@ -348,20 +366,16 @@ export default function App() {
         console.error('Failed to get user info:', err);
       }
 
-      // FIX: Check if role exists and is valid
       const userRole = data.role || null;
 
-      // Update state
       setIsLoggedIn(true);
       setUserRole(userRole);
       setAuthFlow('landing');
 
-      // If role exists, go directly to dashboard, otherwise show role selection
       if (userRole) {
         setShowRoleSelection(false);
         setActivePage('dashboard');
 
-        // Replace history with dashboard state
         const newState = {
           isLoggedIn: true,
           authFlow: 'landing',
@@ -372,7 +386,6 @@ export default function App() {
         };
         window.history.replaceState(newState, '', window.location.href);
       } else {
-        // No role found - show role selection
         setShowRoleSelection(true);
 
         const newState = {
@@ -390,7 +403,6 @@ export default function App() {
     } catch (error: any) {
       console.error('Login error:', error);
 
-      // Show specific error message
       if (error.message.includes('Incorrect email or password')) {
         alert('Invalid credentials. Please check your email and password.');
       } else {
@@ -400,7 +412,6 @@ export default function App() {
     }
   };
 
-  // Update the token validation useEffect
   useEffect(() => {
     if (isLoggedIn) {
       const token = getToken();
@@ -414,7 +425,6 @@ export default function App() {
   }, [isLoggedIn]);
 
   const handleRoleSelection = (role: 'vendor' | 'client') => {
-    // Get the user's actual role from session storage or the stored state
     const storedUser = sessionStorage.getItem('user');
     let actualRole = userRole;
 
@@ -427,18 +437,15 @@ export default function App() {
       }
     }
 
-    // Validate if selected role matches the user's actual role
     if (actualRole && actualRole !== role) {
       const errorMsg = actualRole === 'client'
         ? "You are registered as a client. Please continue as Client."
         : "You are registered as a vendor. Please continue as Vendor.";
 
-      // Show error toast/notification
-      alert(errorMsg); // You can replace this with your toast system
+      alert(errorMsg);
       return;
     }
 
-    // Proceed with role selection
     localStorage.setItem('user_role', role);
 
     setUserRole(role);
@@ -464,14 +471,11 @@ export default function App() {
     localStorage.removeItem('user_email');
     localStorage.removeItem('app_nav_state');
     setUserEmail('');
-
-    // Simple redirect without replace to avoid blank tab
     window.location.href = '/';
   };
 
   const handleClientPageChange = (page: string) => {
-    if (activePage === page) return; // Don't navigate to same page
-
+    if (activePage === page) return;
     setActivePage(page);
     const currentState = { ...navRef.current, activePage: page };
     window.history.replaceState(currentState, '', window.location.href);
@@ -479,7 +483,6 @@ export default function App() {
 
   const handleSettingsClick = () => {
     if (activePage === 'settings') return;
-
     setActivePage('settings');
     const currentState = { ...navRef.current, activePage: 'settings' };
     window.history.replaceState(currentState, '', window.location.href);
@@ -501,10 +504,29 @@ export default function App() {
 
   const handleVendorPageChange = (page: 'dashboard' | 'resources' | 'contracts') => {
     if (currentVendorPage === page) return;
-
     setCurrentVendorPage(page);
     const currentState = { ...navRef.current, currentVendorPage: page };
     window.history.replaceState(currentState, '', window.location.href);
+  };
+
+  // Admin handlers
+  const handleAdminPageChange = (page: string) => {
+    if (adminActivePage === page) return;
+    setAdminActivePage(page);
+  };
+
+  const handleAdminSettingsClick = () => {
+    setAdminActivePage('settings');
+  };
+
+  // Super Admin handlers
+  const handleSuperAdminPageChange = (page: string) => {
+    if (superAdminActivePage === page) return;
+    setSuperAdminActivePage(page);
+  };
+
+  const handleSuperAdminSettingsClick = () => {
+    setSuperAdminActivePage('settings');
   };
 
   const handleForgotPassword = () => navigate({ authFlow: 'forgot-password' });
@@ -587,6 +609,12 @@ export default function App() {
       if (authFlow === 'enter-otp') {
         return (
           <div>
+            <EnterOTPPage
+              email={resetEmail}
+              onVerifyCode={handleVerifyOTP}
+              onResendCode={handleResendCode}
+              onBackToLogin={handleBackToLogin}
+            />
             <Chatbot
               isLoggedIn={false}
               userRole={null}
@@ -643,7 +671,92 @@ export default function App() {
       );
     }
 
-    // Vendor Portal
+    // ==================== ADMIN PORTAL ====================
+    if (userRole === 'admin') {
+      return (
+        <div className="min-h-screen bg-background">
+          <AdminSidebar
+            activePage={adminActivePage}
+            onPageChange={handleAdminPageChange}
+            isCollapsed={adminSidebarCollapsed}
+            onToggleCollapse={() => setAdminSidebarCollapsed(!adminSidebarCollapsed)}
+            isMobileOpen={adminMobileSidebarOpen}
+            onMobileClose={() => setAdminMobileSidebarOpen(false)}
+          />
+          <Header
+            onLogout={handleLogout}
+            onSettingsClick={handleAdminSettingsClick}
+            sidebarCollapsed={adminSidebarCollapsed}
+            onMobileMenuToggle={() => setAdminMobileSidebarOpen(!adminMobileSidebarOpen)}
+            currentPage={adminActivePage}
+            userRole="admin"
+          />
+
+          <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${adminSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+            <div className="p-4 md:p-8 min-h-[calc(100vh-5rem)] bg-slate-50 dark:bg-slate-900">
+              {adminActivePage === 'dashboard' && <AdminDashboard />}
+              {adminActivePage === 'users' && <AdminUsers />}
+              {adminActivePage === 'resources' && <AdminResources />}
+              {adminActivePage === 'requirements' && <AdminRequirements />}
+              {adminActivePage === 'analytics' && <AdminAnalytics />}
+              {adminActivePage === 'settings' && <AdminSettings />}
+            </div>
+          </main>
+
+          <ScrollToTop />
+          <Chatbot
+            isLoggedIn={true}
+            userRole={userRole}
+            onLoginClick={handleLandingLogin}
+            onSignupClick={handleLandingGetStarted}
+          />
+        </div>
+      );
+    }
+
+    // ==================== SUPER ADMIN PORTAL ====================
+    if (userRole === 'super_admin') {
+      return (
+        <div className="min-h-screen bg-background">
+          <SuperAdminSidebar
+            activePage={superAdminActivePage}
+            onPageChange={handleSuperAdminPageChange}
+            isCollapsed={superAdminSidebarCollapsed}
+            onToggleCollapse={() => setSuperAdminSidebarCollapsed(!superAdminSidebarCollapsed)}
+            isMobileOpen={superAdminMobileSidebarOpen}
+            onMobileClose={() => setSuperAdminMobileSidebarOpen(false)}
+          />
+          <Header
+            onLogout={handleLogout}
+            onSettingsClick={handleSuperAdminSettingsClick}
+            sidebarCollapsed={superAdminSidebarCollapsed}
+            onMobileMenuToggle={() => setSuperAdminMobileSidebarOpen(!superAdminMobileSidebarOpen)}
+            currentPage={superAdminActivePage}
+            userRole="super_admin"
+          />
+
+          <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${superAdminSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+            <div className="p-4 md:p-8 min-h-[calc(100vh-5rem)] bg-slate-50 dark:bg-slate-900">
+              {superAdminActivePage === 'dashboard' && <SuperAdminDashboard />}
+              {superAdminActivePage === 'users' && <SuperAdminUsers />}
+              {superAdminActivePage === 'system' && <SuperAdminSystem />}
+              {superAdminActivePage === 'payments' && <SuperAdminPayments />}
+              {superAdminActivePage === 'settings' && <SuperAdminSettings />}
+            </div>
+          </main>
+
+          <ScrollToTop />
+          <Chatbot
+            isLoggedIn={true}
+            userRole={userRole}
+            onLoginClick={handleLandingLogin}
+            onSignupClick={handleLandingGetStarted}
+          />
+        </div>
+      );
+    }
+
+    // ==================== VENDOR PORTAL ====================
     if (userRole === 'vendor') {
       return (
         <div className="min-h-screen bg-background">
@@ -660,7 +773,8 @@ export default function App() {
             onSettingsClick={handleSettingsClick}
             sidebarCollapsed={vendorSidebarCollapsed}
             onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            currentPage={currentVendorPage} // ✅ ADD THIS
+            currentPage={currentVendorPage}
+            userRole="vendor"
           />
 
           <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${vendorSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
@@ -684,8 +798,7 @@ export default function App() {
       );
     }
 
-    // Client Portal
-    // In App.tsx, find the client portal render section
+    // ==================== CLIENT PORTAL ====================
     if (userRole === 'client') {
       return (
         <div className="min-h-screen bg-background">
@@ -703,6 +816,7 @@ export default function App() {
             sidebarCollapsed={isSidebarCollapsed}
             onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             currentPage={activePage}
+            userRole="client"
           />
 
           <main className={`min-h-screen pt-16 md:pt-20 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
@@ -730,7 +844,6 @@ export default function App() {
               {activePage === 'resources' && <Resources />}
               {activePage === 'billing' && <Billing />}
               {activePage === 'settings' && <Settings />}
-              {/* ✅ ADD THIS NEW CONDITION */}
               {activePage === 'help' && <HelpSupport />}
             </div>
           </main>

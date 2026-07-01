@@ -1,4 +1,4 @@
-// Header.tsx - Updated with vendor page support
+// Header.tsx - Updated with userRole support
 import { useState, useEffect, useRef } from 'react';
 import React from 'react';
 import {
@@ -6,7 +6,8 @@ import {
   Phone, Building2, Camera, Trash2, X, Sparkles, Bell,
   Shield, Award, ChevronRight, UserCircle, Briefcase,
   Star, Clock, CheckCircle, Zap, LayoutDashboard, FileText,
-  Users, CreditCard, HelpCircle
+  Users, CreditCard, HelpCircle,
+  BarChart3
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationPanel } from './NotificationPanel';
@@ -18,9 +19,10 @@ interface HeaderProps {
   sidebarCollapsed?: boolean;
   onMobileMenuToggle?: () => void;
   currentPage?: string;
+  userRole?: 'client' | 'vendor' | 'admin' | 'super_admin' | null; // ADD THIS
 }
 
-// Page configuration for breadcrumb - Updated with vendor pages
+// Page configuration for breadcrumb - Updated with all roles
 const pageConfig: Record<string, { label: string; icon: any; parent?: string }> = {
   // Client pages
   dashboard: { label: 'Dashboard', icon: LayoutDashboard },
@@ -35,6 +37,20 @@ const pageConfig: Record<string, { label: string; icon: any; parent?: string }> 
   'vendor-dashboard': { label: 'Dashboard', icon: LayoutDashboard },
   'vendor-resources': { label: 'Resources', icon: Users, parent: 'vendor-dashboard' },
   'vendor-contracts': { label: 'Contracts', icon: FileText, parent: 'vendor-dashboard' },
+  
+  // Admin pages
+  'admin-dashboard': { label: 'Dashboard', icon: LayoutDashboard },
+  'admin-users': { label: 'Users', icon: Users, parent: 'admin-dashboard' },
+  'admin-resources': { label: 'Resources', icon: FileText, parent: 'admin-dashboard' },
+  'admin-requirements': { label: 'Requirements', icon: FileText, parent: 'admin-dashboard' },
+  'admin-analytics': { label: 'Analytics', icon: BarChart3, parent: 'admin-dashboard' },
+  'admin-settings': { label: 'Settings', icon: Settings, parent: 'admin-dashboard' },
+  
+  // Super Admin pages
+  'superadmin-dashboard': { label: 'Dashboard', icon: LayoutDashboard },
+  'superadmin-users': { label: 'Users', icon: Users, parent: 'superadmin-dashboard' },
+  'superadmin-system': { label: 'System', icon: Settings, parent: 'superadmin-dashboard' },
+  'superadmin-payments': { label: 'Payments', icon: CreditCard, parent: 'superadmin-dashboard' },
 };
 
 export function Header({
@@ -43,6 +59,7 @@ export function Header({
   sidebarCollapsed = false,
   onMobileMenuToggle,
   currentPage = 'dashboard',
+  userRole = null, // ADD THIS
 }: HeaderProps) {
   const { showSuccess, showError } = useToast();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -51,19 +68,40 @@ export function Header({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [userRole, setUserRole] = useState<'vendor' | 'client' | null>(null);
+  const [userRoleState, setUserRoleState] = useState<'vendor' | 'client' | 'admin' | 'super_admin' | null>(userRole);
   const [editingUser, setEditingUser] = useState({ name: '', phone: '' });
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Get current page config - map vendor page names to config keys
+  // Update userRole when prop changes
+  useEffect(() => {
+    setUserRoleState(userRole);
+  }, [userRole]);
+
+  // Get current page config - map page names to config keys
   const getPageKey = (page: string): string => {
-    // Map vendor page names to config keys
-    if (page === 'dashboard' && userRole === 'vendor') return 'vendor-dashboard';
-    if (page === 'resources' && userRole === 'vendor') return 'vendor-resources';
-    if (page === 'contracts' && userRole === 'vendor') return 'vendor-contracts';
+    // Admin pages
+    if (page === 'dashboard' && userRoleState === 'admin') return 'admin-dashboard';
+    if (page === 'users' && userRoleState === 'admin') return 'admin-users';
+    if (page === 'resources' && userRoleState === 'admin') return 'admin-resources';
+    if (page === 'requirements' && userRoleState === 'admin') return 'admin-requirements';
+    if (page === 'analytics' && userRoleState === 'admin') return 'admin-analytics';
+    if (page === 'settings' && userRoleState === 'admin') return 'admin-settings';
+    
+    // Super Admin pages
+    if (page === 'dashboard' && userRoleState === 'super_admin') return 'superadmin-dashboard';
+    if (page === 'users' && userRoleState === 'super_admin') return 'superadmin-users';
+    if (page === 'system' && userRoleState === 'super_admin') return 'superadmin-system';
+    if (page === 'payments' && userRoleState === 'super_admin') return 'superadmin-payments';
+    if (page === 'settings' && userRoleState === 'super_admin') return 'superadmin-settings';
+    
+    // Vendor pages
+    if (page === 'dashboard' && userRoleState === 'vendor') return 'vendor-dashboard';
+    if (page === 'resources' && userRoleState === 'vendor') return 'vendor-resources';
+    if (page === 'contracts' && userRoleState === 'vendor') return 'vendor-contracts';
+    
     return page;
   };
 
@@ -165,8 +203,8 @@ export function Header({
   // Fetch user data from API
   const fetchUser = async () => {
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-    const role = localStorage.getItem('user_role') as 'vendor' | 'client' | null;
-    setUserRole(role);
+    const role = localStorage.getItem('user_role') as 'vendor' | 'client' | 'admin' | 'super_admin' | null;
+    if (role) setUserRoleState(role);
 
     if (!token) {
       setUser({ name: 'Guest', email: 'guest@example.com', phone: '', company: '', role: '', profile_picture: '' });
@@ -246,31 +284,44 @@ export function Header({
   };
 
   const getAvatarGradient = () => {
-    if (userRole === 'vendor') {
-      return 'from-green-500 to-emerald-600';
-    }
+    if (userRoleState === 'vendor') return 'from-green-500 to-emerald-600';
+    if (userRoleState === 'admin') return 'from-indigo-500 to-purple-600';
+    if (userRoleState === 'super_admin') return 'from-rose-500 to-pink-600';
     return 'from-blue-500 to-indigo-600';
   };
 
   const getShadowColor = () => {
-    if (userRole === 'vendor') {
-      return 'shadow-green-500/40';
-    }
+    if (userRoleState === 'vendor') return 'shadow-green-500/40';
+    if (userRoleState === 'admin') return 'shadow-indigo-500/40';
+    if (userRoleState === 'super_admin') return 'shadow-rose-500/40';
     return 'shadow-blue-500/40';
   };
 
   const getRingColor = () => {
-    if (userRole === 'vendor') {
-      return 'ring-green-100 dark:ring-green-900/50 group-hover:ring-green-200';
-    }
+    if (userRoleState === 'vendor') return 'ring-green-100 dark:ring-green-900/50 group-hover:ring-green-200';
+    if (userRoleState === 'admin') return 'ring-indigo-100 dark:ring-indigo-900/50 group-hover:ring-indigo-200';
+    if (userRoleState === 'super_admin') return 'ring-rose-100 dark:ring-rose-900/50 group-hover:ring-rose-200';
     return 'ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200';
   };
 
   const getStatusColor = () => {
-    if (userRole === 'vendor') {
-      return 'bg-green-500';
-    }
+    if (userRoleState === 'vendor') return 'bg-green-500';
+    if (userRoleState === 'admin') return 'bg-indigo-500';
+    if (userRoleState === 'super_admin') return 'bg-rose-500';
     return 'bg-blue-500';
+  };
+
+  const getRoleBadge = () => {
+    if (userRoleState === 'vendor') {
+      return { label: 'Vendor', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
+    }
+    if (userRoleState === 'admin') {
+      return { label: 'Admin', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' };
+    }
+    if (userRoleState === 'super_admin') {
+      return { label: 'Super Admin', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
+    }
+    return { label: 'Client', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' };
   };
 
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +419,8 @@ export function Header({
     setShowSettingsModal(true);
   };
 
+  const roleBadge = getRoleBadge();
+
   return (
     <>
       <header
@@ -387,12 +440,22 @@ export function Header({
         {/* Left Section - Dynamic Breadcrumb */}
         <div className="flex-1 flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2">
-            <Sparkles size={18} className={`${userRole === 'vendor' ? 'text-emerald-500' : 'text-blue-500'} animate-pulse`} />
+            <Sparkles size={18} className={`${
+              userRoleState === 'vendor' ? 'text-emerald-500' :
+              userRoleState === 'admin' ? 'text-indigo-500' :
+              userRoleState === 'super_admin' ? 'text-rose-500' :
+              'text-blue-500'
+            } animate-pulse`} />
             
             {/* Parent page (if exists) */}
             {parentPageConfig && (
               <>
-                <span className={`text-sm font-medium ${userRole === 'vendor' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer`}>
+                <span className={`text-sm font-medium ${
+                  userRoleState === 'vendor' ? 'text-emerald-600 dark:text-emerald-400' :
+                  userRoleState === 'admin' ? 'text-indigo-600 dark:text-indigo-400' :
+                  userRoleState === 'super_admin' ? 'text-rose-600 dark:text-rose-400' :
+                  'text-slate-600 dark:text-slate-400'
+                } hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer`}>
                   {parentPageConfig.label}
                 </span>
                 <span className="text-xs text-slate-400 dark:text-slate-500">/</span>
@@ -400,9 +463,19 @@ export function Header({
             )}
             
             {/* Current page */}
-            <span className={`text-sm font-semibold ${userRole === 'vendor' ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'} flex items-center gap-1.5`}>
+            <span className={`text-sm font-semibold ${
+              userRoleState === 'vendor' ? 'text-emerald-700 dark:text-emerald-300' :
+              userRoleState === 'admin' ? 'text-indigo-700 dark:text-indigo-300' :
+              userRoleState === 'super_admin' ? 'text-rose-700 dark:text-rose-300' :
+              'text-slate-800 dark:text-slate-200'
+            } flex items-center gap-1.5`}>
               {currentPageConfig.icon && (
-                <currentPageConfig.icon size={16} className={userRole === 'vendor' ? 'text-emerald-500' : 'text-blue-500'} />
+                <currentPageConfig.icon size={16} className={
+                  userRoleState === 'vendor' ? 'text-emerald-500' :
+                  userRoleState === 'admin' ? 'text-indigo-500' :
+                  userRoleState === 'super_admin' ? 'text-rose-500' :
+                  'text-blue-500'
+                } />
               )}
               {currentPageConfig.label}
             </span>
@@ -440,16 +513,9 @@ export function Header({
               <div className="text-left hidden md:block">
                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                   {loading ? 'Loading...' : (error ? 'Error' : user.name)}
-                  {userRole === 'vendor' && (
-                    <span className="text-[9px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                      Vendor
-                    </span>
-                  )}
-                  {userRole === 'client' && (
-                    <span className="text-[9px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                      Client
-                    </span>
-                  )}
+                  <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full ${roleBadge.color}`}>
+                    {roleBadge.label}
+                  </span>
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
                   {loading ? 'Please wait...' : (error ? 'Check console' : user.email)}
@@ -486,12 +552,8 @@ export function Header({
                         </div>
                       )}
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                      userRole === 'vendor'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    }`}>
-                      {userRole === 'vendor' ? 'Vendor' : 'Client'}
+                    <div className={`px-2 py-1 rounded-full text-[10px] font-semibold ${roleBadge.color}`}>
+                      {roleBadge.label}
                     </div>
                   </div>
                 </div>
@@ -528,7 +590,7 @@ export function Header({
                 <div className="px-4 py-2 border-t border-slate-200/60 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
                     <span>Signed in as {user.role || 'user'}</span>
-                    <span>v2.0 • {userRole === 'vendor' ? 'Pro' : 'Business'}</span>
+                    <span>v2.0 • {userRoleState === 'vendor' ? 'Pro' : userRoleState === 'admin' ? 'Admin' : userRoleState === 'super_admin' ? 'Super' : 'Business'}</span>
                   </div>
                 </div>
               </div>
@@ -542,7 +604,12 @@ export function Header({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div ref={modalRef} className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-t-3xl">
+            <div className={`relative bg-gradient-to-r ${
+              userRoleState === 'vendor' ? 'from-green-600 to-emerald-600' :
+              userRoleState === 'admin' ? 'from-indigo-600 to-purple-600' :
+              userRoleState === 'super_admin' ? 'from-rose-600 to-pink-600' :
+              'from-blue-600 to-indigo-600'
+            } p-6 rounded-t-3xl`}>
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
               <button
@@ -558,7 +625,7 @@ export function Header({
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">Profile Settings</h2>
-                  <p className="text-blue-100 text-sm">Manage your profile information</p>
+                  <p className="text-white/80 text-sm">Manage your profile information</p>
                 </div>
               </div>
             </div>
@@ -674,16 +741,15 @@ export function Header({
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Role</label>
                 <div className="flex items-center gap-3">
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${
-                    userRole === 'vendor'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${roleBadge.color}`}>
                     <Award size={16} />
-                    {userRole === 'vendor' ? 'Vendor' : 'Client'}
+                    {roleBadge.label}
                   </div>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {userRole === 'vendor' ? 'You can post requirements' : 'You can find resources'}
+                    {userRoleState === 'vendor' ? 'You can post requirements' :
+                     userRoleState === 'admin' ? 'Full platform management' :
+                     userRoleState === 'super_admin' ? 'Complete system control' :
+                     'You can find resources'}
                   </span>
                 </div>
               </div>

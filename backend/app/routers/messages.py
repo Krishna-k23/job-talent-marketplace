@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
-from app.models import User, Message
-from app.schemas import MessageCreate, MessageResponse
+from app.models.models import User, Message
+from app.schemas.schemas import MessageCreate, MessageResponse
 from app.dependencies import get_current_user
 from app.utils.notifications import create_notification
 

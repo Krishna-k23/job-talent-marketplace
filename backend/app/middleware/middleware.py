@@ -3,14 +3,14 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from app.config import settings
 from app.database import get_db
-from app.models import User
+from app.models.models import User
 from sqlalchemy.orm import Session
 from typing import Optional
 import re
 
 security = HTTPBearer()
 
-# Define role-based path patterns
+# Define role-based path patterns - UPDATED with admin and super_admin
 ROLE_PATH_MAPPING = {
     "vendor": [
         r"^/vendor/",
@@ -24,6 +24,10 @@ ROLE_PATH_MAPPING = {
     ],
     "admin": [
         r"^/admin/",
+    ],
+    "super_admin": [
+        r"^/superadmin/",
+        r"^/admin/",  # Super admin has access to admin too
     ]
 }
 
@@ -35,6 +39,7 @@ PUBLIC_PATHS = [
     "/health",
     "/",
     "/static",
+    "/uploads",  # Add uploads path
 ]
 
 def get_current_user_dependency(db: Session, token: str):
@@ -104,16 +109,23 @@ def check_role_access(path: str, user_role: str) -> bool:
     
     Args:
         path: The request path
-        user_role: The user's role (vendor, client, admin)
+        user_role: The user's role (vendor, client, admin, super_admin)
     
     Returns:
         bool: True if access is allowed, False otherwise
     """
-    # Admin has access to everything
-    if user_role == "admin":
+    # Super Admin has access to everything
+    if user_role == "super_admin":
         return True
     
-    # Check if path matches any role-based pattern
+    # Admin has access to admin paths and everything else (except superadmin)
+    if user_role == "admin":
+        # Admin cannot access superadmin paths
+        if re.match(r"^/superadmin/", path):
+            return False
+        return True
+    
+    # Check if path matches any role-based pattern for other roles
     for role, patterns in ROLE_PATH_MAPPING.items():
         if user_role == role:
             for pattern in patterns:
@@ -209,7 +221,7 @@ async def validate_user_role(request: Request, call_next):
     
     return await call_next(request)
 
-# Additional helper function for role-based decorator
+# Helper function for role-based decorator
 def require_role(required_role: str):
     """
     Decorator to require a specific role for an endpoint

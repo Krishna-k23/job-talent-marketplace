@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from app.database import get_db
-from app.models import User, Requirement, Resource, Match
-from app.schemas import RequirementCreate, RequirementUpdate, RequirementResponse, MatchResponse
+from app.models.models import User, Requirement, Resource, Match
+from app.schemas.schemas import RequirementCreate, RequirementUpdate, RequirementResponse, MatchResponse
 from app.dependencies import get_current_user, get_current_client
 from app.utils.helpers import generate_requirement_id
 from fastapi import UploadFile, File

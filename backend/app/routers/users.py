@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from app.database import get_db
-from app.models import User, Company
-from app.schemas import UserResponse, UserUpdate, CompanyUpdate, CompanyResponse
+from app.models.models import User, Company
+from app.schemas.schemas import UserResponse, UserUpdate, CompanyUpdate, CompanyResponse
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/users", tags=["Users"])

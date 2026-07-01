@@ -11,7 +11,7 @@ from app.database import SessionLocal, engine, Base
 
 # Import every model so SQLAlchemy's metadata is fully populated before
 # drop_all / create_all — missing imports cause silent schema gaps.
-from app.models import (
+from app.models.models import (
     OTP, Company, User, Requirement, Resource, Match,
     Contract, Invoice, Message, Notification, Subscription,
     resource_skills,

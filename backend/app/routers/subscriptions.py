@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.database import get_db
-from app.models import User, Subscription
-from app.schemas import SubscriptionResponse, SubscriptionUpdate
+from app.models.models import User, Subscription
+from app.schemas.schemas import SubscriptionResponse, SubscriptionUpdate
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])

@@ -1,6 +1,7 @@
+// Chatbot.tsx - Updated with admin and super_admin support
 import { useState, useEffect, useRef } from 'react';
 import React from 'react'
-import { MessageCircle, X, Send, User, Bot, LogIn, UserPlus, HelpCircle, Phone, FileText, Users, Briefcase, DollarSign, Settings, Headphones } from 'lucide-react';
+import { MessageCircle, X, Send, User, Bot, LogIn, UserPlus, HelpCircle, Phone, FileText, Users, Briefcase, DollarSign, Settings, Headphones, Shield, Crown } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -13,7 +14,7 @@ interface ChatbotProps {
   isLoggedIn?: boolean;
   onLoginClick?: () => void;
   onSignupClick?: () => void;
-  userRole?: 'client' | 'vendor' | null; // Add userRole prop
+  userRole?: 'client' | 'vendor' | 'admin' | 'super_admin' | null;
 }
 
 export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userRole = null }: ChatbotProps) {
@@ -41,7 +42,11 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
       {
         id: 1,
         text: isLoggedIn
-          ? 'Hello! How can I assist you with your portal today?'
+          ? userRole === 'admin' 
+            ? 'Welcome Admin! How can I assist with platform management today?'
+            : userRole === 'super_admin'
+            ? 'Welcome Super Admin! Full system control at your service.'
+            : 'Hello! How can I assist you with your portal today?'
           : 'Hello! How can I help you today?',
         sender: 'bot',
         timestamp: new Date(),
@@ -108,7 +113,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     },
   ];
 
-  // Client-specific quick actions (no contracts)
+  // Client-specific quick actions
   const clientQuickActions = [
     {
       id: 'requirements',
@@ -176,7 +181,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
       icon: Briefcase,
       message: 'I need assistance with contacts',
       color: 'from-purple-500 to-purple-600',
-      action: 'contacts',
+      action: 'contracts',
     },
     {
       id: 'billing',
@@ -204,14 +209,102 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     },
   ];
 
+  // Admin-specific quick actions
+  const adminQuickActions = [
+    {
+      id: 'users',
+      label: 'Users',
+      icon: Users,
+      message: 'I need help managing users',
+      color: 'from-indigo-500 to-indigo-600',
+      action: 'users',
+    },
+    {
+      id: 'resources',
+      label: 'Resources',
+      icon: FileText,
+      message: 'I have questions about resources',
+      color: 'from-green-500 to-green-600',
+      action: 'resources',
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: Shield,
+      message: 'I need analytics insights',
+      color: 'from-purple-500 to-purple-600',
+      action: 'analytics',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      message: 'Help me with system settings',
+      color: 'from-pink-500 to-pink-600',
+      action: 'settings',
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: Headphones,
+      message: 'I need technical support',
+      color: 'from-cyan-500 to-cyan-600',
+      action: 'support',
+    },
+  ];
+
+  // Super Admin-specific quick actions
+  const superAdminQuickActions = [
+    {
+      id: 'users',
+      label: 'Users',
+      icon: Users,
+      message: 'I need help managing users',
+      color: 'from-rose-500 to-rose-600',
+      action: 'users',
+    },
+    {
+      id: 'system',
+      label: 'System',
+      icon: Shield,
+      message: 'I need system management help',
+      color: 'from-purple-500 to-purple-600',
+      action: 'system',
+    },
+    {
+      id: 'payments',
+      label: 'Payments',
+      icon: DollarSign,
+      message: 'I have payment system questions',
+      color: 'from-amber-500 to-amber-600',
+      action: 'payments',
+    },
+    {
+      id: 'health',
+      label: 'Health',
+      icon: Crown,
+      message: 'I need service health check',
+      color: 'from-emerald-500 to-emerald-600',
+      action: 'health',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      message: 'Help me with system settings',
+      color: 'from-pink-500 to-pink-600',
+      action: 'settings',
+    },
+  ];
+
   // Determine which quick actions to show based on user role
   const getQuickActions = () => {
     if (!isLoggedIn) return guestQuickActions;
     
-    // If user is vendor, show vendor actions (includes contracts)
+    if (userRole === 'super_admin') return superAdminQuickActions;
+    if (userRole === 'admin') return adminQuickActions;
     if (userRole === 'vendor') return vendorQuickActions;
     
-    // If user is client or any other role, show client actions (no contracts)
     return clientQuickActions;
   };
 
@@ -281,16 +374,40 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     const vendorResponses: Record<string, string> = {
       requirements: "I can help you with viewing job requirements, tracking submissions, and understanding client needs. Check the Requirements section for available opportunities.",
       resources: "For resources, you can add new talent, manage existing profiles, update availability, and track resource performance from the Resources section.",
-      contacts: "Need help with contacts? You can view active contacts, track billing cycles, check contact details, and manage your vendor agreements from the Contacts page.",
+      contracts: "Need help with contacts? You can view active contacts, track billing cycles, check contact details, and manage your vendor agreements from the Contacts page.",
       billing: "For billing inquiries, you can view your current plan, check payment history, update payment methods, or download invoices from the Billing section.",
       settings: "In Settings, you can update your profile information, change password, manage notification preferences, or configure account settings.",
       support: "Our technical support team is here to help! You can reach us at support@benchbridge.com or call +91-80-1234-5678 (9 AM - 6 PM IST). We typically respond within 2-4 hours.",
     };
 
+    const adminResponses: Record<string, string> = {
+      users: "As an admin, you can manage all platform users. You can view user details, assign roles, deactivate accounts, and monitor user activity from the Users section.",
+      resources: "You have full access to all resources. You can view, edit, or delete any resource across the platform. Check the Resources section for management options.",
+      analytics: "The Analytics section provides comprehensive insights including user growth, requirements by role, vendor distribution, and platform performance metrics.",
+      settings: "In Settings, you can configure system preferences, manage security settings, and control various platform parameters.",
+      support: "Our technical support team is here to help! You can reach us at support@benchbridge.com or call +91-80-1234-5678 (9 AM - 6 PM IST).",
+    };
+
+    const superAdminResponses: Record<string, string> = {
+      users: "As Super Admin, you have complete control over all users including admins. You can deactivate any profile, assign roles, and manage user permissions.",
+      system: "The System section gives you full control over platform operations. You can monitor service health, manage system settings, and control all platform features.",
+      payments: "You have full control over the payment system. You can enable or disable payments, configure payment providers, and monitor payment activity.",
+      health: "Service health monitoring provides real-time status of all platform services including API, Database, Auth, and Email services with uptime tracking.",
+      settings: "System settings allow you to configure everything from security policies to feature toggles. You have complete control over all platform configurations.",
+    };
+
     if (!isLoggedIn) return guestResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
     
+    if (userRole === 'super_admin') {
+      return superAdminResponses[actionId] || "I'm here to help with all system controls!";
+    }
+    
+    if (userRole === 'admin') {
+      return adminResponses[actionId] || "I'm here to help with platform management!";
+    }
+    
     if (userRole === 'vendor') {
-      return vendorResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
+      return vendorResponses[actionId] || "I'm here to help with your vendor needs!";
     }
     
     return clientResponses[actionId] || "I'm here to help! Please let me know what you need assistance with.";
@@ -332,13 +449,29 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
     }
   };
 
+  // Get the right header text
+  const getHeaderText = () => {
+    if (!isLoggedIn) return 'How can I help you?';
+    if (userRole === 'super_admin') return 'Super Admin Support';
+    if (userRole === 'admin') return 'Admin Support';
+    if (userRole === 'vendor') return 'Vendor Support';
+    return 'Client Support';
+  };
+
+  const getHeaderColor = () => {
+    if (userRole === 'super_admin') return 'from-rose-600 to-pink-600';
+    if (userRole === 'admin') return 'from-indigo-600 to-purple-600';
+    if (userRole === 'vendor') return 'from-green-600 to-emerald-600';
+    return 'from-blue-600 to-cyan-600';
+  };
+
   return (
     <>
       {/* Chat Icon */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-full shadow-2xl shadow-blue-600/40 hover:shadow-blue-700/50 hover:scale-110 transition-all duration-300 z-40 flex items-center justify-center group cursor-pointer"
+          className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br ${getHeaderColor()} hover:from-${userRole === 'super_admin' ? 'rose' : userRole === 'admin' ? 'indigo' : userRole === 'vendor' ? 'green' : 'blue'}-700 hover:to-${userRole === 'super_admin' ? 'pink' : userRole === 'admin' ? 'purple' : userRole === 'vendor' ? 'emerald' : 'cyan'}-700 text-white rounded-full shadow-2xl shadow-blue-600/40 hover:shadow-blue-700/50 hover:scale-110 transition-all duration-300 z-40 flex items-center justify-center group cursor-pointer`}
           aria-label="Open chat"
         >
           <MessageCircle size={24} strokeWidth={2.5} className="group-hover:scale-110 transition-transform duration-300" />
@@ -364,20 +497,14 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
             }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-600 to-cyan-600 flex-shrink-0">
+            <div className={`flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r ${getHeaderColor()} flex-shrink-0`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                   <Bot size={24} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Chat Assistant</h3>
-                  <p className="text-xs text-blue-100">
-                    {isLoggedIn && userRole === 'vendor' 
-                      ? 'Vendor Support' 
-                      : isLoggedIn && userRole === 'client' 
-                      ? 'Client Support' 
-                      : 'How can I help you?'}
-                  </p>
+                  <p className="text-xs text-white/80">{getHeaderText()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -407,7 +534,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.sender === 'bot'
-                        ? 'bg-gradient-to-br from-blue-600 to-cyan-600'
+                        ? `bg-gradient-to-br ${getHeaderColor()}`
                         : 'bg-gradient-to-br from-purple-600 to-pink-600'
                       }`}
                   >
@@ -420,12 +547,12 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
                   <div
                     className={`max-w-[75%] px-4 py-3 rounded-2xl ${message.sender === 'bot'
                         ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
-                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                        : `bg-gradient-to-r ${getHeaderColor()} text-white`
                       }`}
                   >
                     <p className="text-sm leading-relaxed break-words">{message.text}</p>
                     <p
-                      className={`text-xs mt-1 ${message.sender === 'bot' ? 'text-slate-400' : 'text-blue-100'
+                      className={`text-xs mt-1 ${message.sender === 'bot' ? 'text-slate-400' : 'text-white/80'
                         }`}
                     >
                       {message.timestamp.toLocaleTimeString([], {
@@ -440,7 +567,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
               {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-600 to-cyan-600">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${getHeaderColor()}`}>
                     <Bot size={18} className="text-white" />
                   </div>
                   <div className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -455,7 +582,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
 
               {/* Quick Actions */}
               {showQuickActions && (
-                <div className={`grid ${isLoggedIn ? (userRole === 'vendor' ? 'grid-cols-3' : 'grid-cols-3') : 'grid-cols-2'} gap-3 pt-4`}>
+                <div className={`grid ${isLoggedIn ? (userRole === 'super_admin' ? 'grid-cols-3' : userRole === 'admin' ? 'grid-cols-3' : userRole === 'vendor' ? 'grid-cols-3' : 'grid-cols-3') : 'grid-cols-2'} gap-3 pt-4`}>
                   {quickActions.map((action) => (
                     <button
                       key={action.id}
@@ -485,7 +612,7 @@ export function Chatbot({ isLoggedIn = false, onLoginClick, onSignupClick, userR
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim()}
-                  className="w-11 h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed active:scale-95 cursor-pointer"
+                  className={`w-11 h-11 bg-gradient-to-r ${getHeaderColor()} hover:from-${userRole === 'super_admin' ? 'rose' : userRole === 'admin' ? 'indigo' : userRole === 'vendor' ? 'green' : 'blue'}-700 hover:to-${userRole === 'super_admin' ? 'pink' : userRole === 'admin' ? 'purple' : userRole === 'vendor' ? 'emerald' : 'cyan'}-700 disabled:from-slate-300 disabled:to-slate-400 text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg disabled:shadow-none disabled:cursor-not-allowed active:scale-95 cursor-pointer`}
                 >
                   <Send size={18} />
                 </button>

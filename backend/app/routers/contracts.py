@@ -4,8 +4,8 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 from app.database import get_db
-from app.models import User, Contract, Requirement, Resource
-from app.schemas import ContractCreate, ContractResponse, ContractStatus
+from app.models.models import User, Contract, Requirement, Resource
+from app.schemas.schemas import ContractCreate, ContractResponse, ContractStatus
 from app.dependencies import get_current_user
 from app.utils.helpers import generate_contract_id
 

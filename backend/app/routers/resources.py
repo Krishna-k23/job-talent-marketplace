@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from app.database import get_db
-from app.models import Contract, User, Resource, Match, Requirement
-from app.schemas import ResourceCreate, ResourceUpdate, ResourceResponse
+from app.models.models import Contract, User, Resource, Match, Requirement
+from app.schemas.schemas import ResourceCreate, ResourceUpdate, ResourceResponse
 from app.dependencies import get_current_user, get_current_vendor
 from app.utils.helpers import generate_resource_id
 import shutil

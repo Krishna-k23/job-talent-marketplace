@@ -2,8 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from fastapi.staticfiles import StaticFiles
-from app.middleware import validate_user_role
-from app.routers import auth, users, requirements, resources, contracts, billing, dashboard, notifications, messages, subscriptions, analytics
+from app.middleware.middleware import validate_user_role
+from app.routers import auth, users, requirements, resources, contracts, billing, dashboard, notifications, messages, subscriptions, analytics, admin, superadmin
 import os
 
 # Create uploads directory if it doesn't exist
@@ -21,7 +21,6 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
-        "https://tilt-extending-kinship.ngrok-free.dev",
         "https://*.ngrok-free.dev",
         "https://*.ngrok-free.app",
     ],
@@ -32,7 +31,6 @@ app.add_middleware(
 )
 
 # Mount static files BEFORE including routers
-# This ensures /uploads is accessible for serving files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.middleware("http")
@@ -51,6 +49,8 @@ app.include_router(notifications.router)
 app.include_router(messages.router)
 app.include_router(subscriptions.router)
 app.include_router(analytics.router)
+app.include_router(admin.router)  
+app.include_router(superadmin.router)
 
 @app.get("/")
 def root():

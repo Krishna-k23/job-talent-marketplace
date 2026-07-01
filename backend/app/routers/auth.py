@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.database import get_db
-from app.models import User, OTP
-from app.schemas import LoginRequest, Token, UserCreate, UserResponse, OTPRequest, OTPVerifyRequest, PasswordResetRequest
-from app.auth import verify_password, get_password_hash, create_access_token, create_refresh_token
+from app.models.models import User, OTP
+from app.schemas.schemas import LoginRequest, Token, UserCreate, UserResponse, OTPRequest, OTPVerifyRequest, PasswordResetRequest
+from app.auth import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_token
 from app.utils.email_service import generate_otp, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -14,15 +14,26 @@ STATIC_OTP = "123456"
 
 @router.post("/login", response_model=Token)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
+    print(f"=== LOGIN ATTEMPT ===")
+    print(f"Email: {request.email}")
+    
     user = db.query(User).filter(User.email == request.email).first()
     
     if not user:
+        print(f"User not found: {request.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No account found with this email. Please register as a client or vendor.",
         )
     
-    if not verify_password(request.password, user.hashed_password):
+    print(f"User found: {user.email}, Role: {user.role}")
+    print(f"Stored hash: {user.hashed_password[:30]}...")
+    
+    # Verify password
+    is_password_valid = verify_password(request.password, user.hashed_password)
+    print(f"Password valid: {is_password_valid}")
+    
+    if not is_password_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password. Please try again or reset your password.",
@@ -37,12 +48,96 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
     refresh_token = create_refresh_token(data={"sub": user.email})
     
+    print(f"Login successful for: {user.email}")
+    print(f"=== LOGIN COMPLETE ===")
+    
     return {
         "access_token": access_token, 
         "refresh_token": refresh_token, 
         "token_type": "bearer",
         "role": user.role
     }
+
+# =============================================
+# DEBUG ENDPOINTS
+# =============================================
+
+@router.post("/debug/verify-password")
+def debug_verify_password(
+    email: str,
+    password: str,
+    db: Session = Depends(get_db)
+):
+    """Debug endpoint to test password verification"""
+    user = db.query(User).filter(User.email == email).first()
+    
+    if not user:
+        return {
+            "success": False,
+            "message": "User not found",
+            "user_exists": False
+        }
+    
+    # Check if password verifies
+    is_valid = verify_password(password, user.hashed_password)
+    
+    return {
+        "success": is_valid,
+        "message": "Password is valid" if is_valid else "Password is invalid",
+        "user_exists": True,
+        "email": user.email,
+        "role": user.role,
+        "hashed_password_preview": user.hashed_password[:30] + "...",
+        "is_active": user.is_active,
+        "password_length": len(password)
+    }
+
+@router.get("/debug/users")
+def debug_users(db: Session = Depends(get_db)):
+    """Debug endpoint to list all users"""
+    users = db.query(User).all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "role": u.role,
+            "is_active": u.is_active,
+            "hashed_password_preview": u.hashed_password[:30] + "..." if u.hashed_password else None,
+            "created_at": u.created_at
+        }
+        for u in users
+    ]
+
+@router.post("/debug/create-test-admin")
+def debug_create_test_admin(db: Session = Depends(get_db)):
+    """Create a test admin with known password"""
+    email = "testadmin@benchastra.com"
+    password = "test123"
+    hashed = get_password_hash(password)
+    
+    # Check if exists
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        existing.hashed_password = hashed
+        existing.is_active = True
+        db.commit()
+        db.refresh(existing)
+        return {"message": "Updated existing test admin", "email": email, "password": password}
+    
+    # Create new
+    user = User(
+        email=email,
+        hashed_password=hashed,
+        full_name="Test Admin",
+        role="admin",
+        is_active=True,
+        is_verified=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    return {"message": "Created test admin", "email": email, "password": password}
 
 @router.post("/signup", response_model=UserResponse)
 def signup(request: UserCreate, db: Session = Depends(get_db)):
@@ -79,7 +174,7 @@ def signup(request: UserCreate, db: Session = Depends(get_db)):
     
     # Create company if provided
     if request.company_name:
-        from app.models import Company
+        from app.models.models import Company
         company = Company(
             name=request.company_name,
             website=request.website,

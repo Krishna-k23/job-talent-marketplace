@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from app.database import get_db
-from app.models import User, Requirement, Resource, Contract, Match
+from app.models.models import User, Requirement, Resource, Contract, Match
 from app.dependencies import get_current_client, get_current_vendor
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])

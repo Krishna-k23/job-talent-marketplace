@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models import User, Contract, Invoice
-from app.schemas import InvoiceResponse, SubscriptionPlan
+from app.models.models import User, Contract, Invoice
+from app.schemas.schemas import InvoiceResponse, SubscriptionPlan
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/billing", tags=["Billing"])

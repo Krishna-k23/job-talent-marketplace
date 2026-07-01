@@ -1,9 +1,15 @@
 import random
 import string
 
-def generate_requirement_id() -> str:
-    """Generate unique requirement ID like REQ001"""
-    return f"REQ{random.randint(100, 999)}"
+def generate_requirement_id():
+    """Generate a unique requirement ID"""
+    import random
+    import string
+    import time
+    
+    timestamp = int(time.time() * 1000) % 100000
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"REQ{timestamp}{random_str}"
 
 def generate_resource_id() -> str:
     """Generate unique resource ID like RES001"""
